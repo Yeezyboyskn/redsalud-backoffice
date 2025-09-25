@@ -1,19 +1,26 @@
-import { http, HttpResponse } from "msw"
+﻿import { http, HttpResponse } from "msw"
 
 /* =========================
  *   Datos base (mock)
  * ========================= */
 const doctors = [
-  { id: 1, rut: "11.111.111-1", nombre: "Dra. Pérez", especialidad: "Traumato", piso: 3, boxes: [301, 302] },
-  { id: 2, rut: "22.222.222-2", nombre: "Dr. Soto",  especialidad: "Odonto",  piso: 4, boxes: [401] },
-  { id: 3, rut: "33.333.333-3", nombre: "Dr. Rojas", especialidad: "Cardio",  piso: 5, boxes: [501] },
+  { id: 1, rut: "11.111.111-1", nombre: "Dra. Paz Pérez", especialidad: "Traumatología", piso: 3, boxes: [301, 302] },
+  { id: 2, rut: "22.222.222-2", nombre: "Dr. Mateo Soto", especialidad: "Odontología", piso: 4, boxes: [401, 402] },
+  { id: 3, rut: "33.333.333-3", nombre: "Dr. Martín Rojas", especialidad: "Cardiología", piso: 5, boxes: [501, 502] },
+  { id: 4, rut: "44.444.444-4", nombre: "Dra. Javiera Fuentes", especialidad: "Dermatología", piso: 2, boxes: [201] },
+  { id: 5, rut: "55.555.555-5", nombre: "Dr. Ignacio Araya", especialidad: "Medicina General", piso: 1, boxes: [101, 102] },
 ] as const
 
 const boxes: { id:number; piso:number; especialidad:string; estado:"disponible"|"bloqueado" }[] = [
-  { id: 301, piso: 3, especialidad: "Traumato", estado: "disponible" },
-  { id: 302, piso: 3, especialidad: "Traumato", estado: "bloqueado"  },
-  { id: 401, piso: 4, especialidad: "Odonto",  estado: "disponible" },
-  { id: 501, piso: 5, especialidad: "Cardio",  estado: "disponible" },
+  { id: 101, piso: 1, especialidad: "Medicina General", estado: "disponible" },
+  { id: 102, piso: 1, especialidad: "Medicina General", estado: "bloqueado" },
+  { id: 201, piso: 2, especialidad: "Dermatología", estado: "disponible" },
+  { id: 301, piso: 3, especialidad: "Traumatología", estado: "disponible" },
+  { id: 302, piso: 3, especialidad: "Traumatología", estado: "bloqueado" },
+  { id: 401, piso: 4, especialidad: "Odontología", estado: "disponible" },
+  { id: 402, piso: 4, especialidad: "Odontología", estado: "disponible" },
+  { id: 501, piso: 5, especialidad: "Cardiología", estado: "disponible" },
+  { id: 502, piso: 5, especialidad: "Cardiología", estado: "bloqueado" },
 ]
 
 let especialidades = Array.from(new Set([
@@ -24,30 +31,64 @@ let especialidades = Array.from(new Set([
 let pisos = Array.from(new Set(boxes.map(b => b.piso))).sort((a,b)=>a-b)
 
 const bloqueos: { id:string; box:number; fecha:string; motivo:string; creadoPor:string }[] = [
-  { id: "b1", box: 302, fecha: "2025-09-25", motivo: "Mantención", creadoPor: "Jefatura" },
+  { id: "b1", box: 102, fecha: "2025-10-01", motivo: "Reposo médico", creadoPor: "Agendamiento" },
+  { id: "b2", box: 302, fecha: "2025-10-02", motivo: "Mantención de sillón", creadoPor: "Jefatura" },
+  { id: "b3", box: 502, fecha: "2025-10-05", motivo: "Sanitización programada", creadoPor: "Operaciones" },
 ]
 
-const tickets: { id:string; tipo:"bloqueo"|"sistema"; detalle:string; estado:"abierto"|"cerrado"; creadoPor:string }[] = []
+const tickets: { id:string; tipo:"bloqueo"|"sistema"; detalle:string; estado:"abierto"|"cerrado"; creadoPor:string }[] = [
+  { id: "15", tipo: "sistema", detalle: "Actualización pendiente de fichas", estado: "abierto", creadoPor: "Soporte" },
+  { id: "14", tipo: "bloqueo", detalle: "Solicitud horario extra box 301", estado: "abierto", creadoPor: "Agendamiento" },
+  { id: "13", tipo: "bloqueo", detalle: "Revisión de climatización piso 4", estado: "cerrado", creadoPor: "Infraestructura" },
+]
 
 const kpiOcupacion = [
-  { piso: 3, ocupacion: 72 },
-  { piso: 4, ocupacion: 61 },
-  { piso: 5, ocupacion: 83 },
+  { piso: 1, ocupacion: 65 },
+  { piso: 2, ocupacion: 74 },
+  { piso: 3, ocupacion: 82 },
+  { piso: 4, ocupacion: 59 },
+  { piso: 5, ocupacion: 87 },
 ]
 
 const kpiDoctor: Record<string, { semana:{dia:string; ocupacion:number}[]; proximos:{fecha:string; box:number}[] }> = {
   "111111111": {
     semana: [
       { dia:"Lun", ocupacion: 80 },
-      { dia:"Mar", ocupacion: 65 },
-      { dia:"Mié", ocupacion: 70 },
+      { dia:"Mar", ocupacion: 68 },
+      { dia:"Mié", ocupacion: 72 },
       { dia:"Jue", ocupacion: 75 },
-      { dia:"Vie", ocupacion: 60 },
+      { dia:"Vie", ocupacion: 64 },
     ],
     proximos: [
-      { fecha:"2025-10-01", box:301 },
-      { fecha:"2025-10-02", box:301 },
-      { fecha:"2025-10-04", box:302 },
+      { fecha:"2025-10-06", box:301 },
+      { fecha:"2025-10-07", box:301 },
+      { fecha:"2025-10-09", box:302 },
+    ],
+  },
+  "222222222": {
+    semana: [
+      { dia:"Lun", ocupacion: 55 },
+      { dia:"Mar", ocupacion: 62 },
+      { dia:"Mié", ocupacion: 58 },
+      { dia:"Jue", ocupacion: 60 },
+      { dia:"Vie", ocupacion: 65 },
+    ],
+    proximos: [
+      { fecha:"2025-10-05", box:401 },
+      { fecha:"2025-10-06", box:402 },
+    ],
+  },
+  "333333333": {
+    semana: [
+      { dia:"Lun", ocupacion: 92 },
+      { dia:"Mar", ocupacion: 85 },
+      { dia:"Mié", ocupacion: 88 },
+      { dia:"Jue", ocupacion: 90 },
+      { dia:"Vie", ocupacion: 94 },
+    ],
+    proximos: [
+      { fecha:"2025-10-04", box:501 },
+      { fecha:"2025-10-07", box:502 },
     ],
   },
 }
@@ -114,7 +155,7 @@ export const handlers = [
   http.get("/api/tickets", () => HttpResponse.json(tickets)),
   http.post("/api/tickets", async ({ request }) => {
     const { tipo, detalle } = (await request.json()) as { tipo:"bloqueo"|"sistema"; detalle:string }
-    const t = { id:String(tickets.length+1), tipo, detalle, estado:"abierto" as const, creadoPor:"Agendamiento" }
+    const t = { id:String(tickets.length + 16), tipo, detalle, estado:"abierto" as const, creadoPor:"Agendamiento" }
     tickets.unshift(t)
     return HttpResponse.json(t, { status:201 })
   }),
@@ -162,7 +203,6 @@ export const handlers = [
   http.delete("/api/catalogos/pisos/:value", ({ params }) => {
     const n = Number(params.value)
     pisos = pisos.filter(p => p !== n)
-    // Opcional: eliminar boxes del piso borrado
     for (let i = boxes.length - 1; i >= 0; i--) if (boxes[i].piso === n) boxes.splice(i, 1)
     return HttpResponse.json({ ok:true })
   }),

@@ -11,13 +11,12 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import type { Resolver } from "react-hook-form"
 
-/* ============ hooks genéricos ============ */
+/* ============ hooks genericos ============ */
 function useCatalogo<T>(key: string, url: string) {
   const qc = useQueryClient()
-  const list = useQuery<T[]>({ queryKey: [key], queryFn: () => fetch(url).then(r => r.json()) })
+  const list = useQuery<T[]>({ queryKey: [key], queryFn: () => fetch(url).then((r) => r.json()) })
   const add = useMutation({
-    mutationFn: (value: T) =>
-      fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ value }) }),
+    mutationFn: (value: T) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ value }) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: [key] }),
   })
   const del = useMutation({
@@ -27,32 +26,37 @@ function useCatalogo<T>(key: string, url: string) {
   return { list, add, del }
 }
 
-/* ============ sección BOXES ============ */
+/* ============ seccion BOXES ============ */
 type Box = { id: number; piso: number; especialidad: string; estado: "disponible" | "bloqueado" }
 
 const boxSchema = z.object({
-  id: z.coerce.number().int().positive({ message: "ID inválido" }),
-  piso: z.coerce.number().int().positive({ message: "Piso inválido" }),
+  id: z.coerce.number().int().positive({ message: "ID invalido" }),
+  piso: z.coerce.number().int().positive({ message: "Piso invalido" }),
   especialidad: z.string().min(1, "Requerido"),
   estado: z.enum(["disponible", "bloqueado"]).default("disponible"),
 })
 
 function useBoxes() {
   const qc = useQueryClient()
-  const list = useQuery<Box[]>({ queryKey: ["boxes-admin"], queryFn: () => fetch("/api/catalogos/boxes").then(r => r.json()) })
+  const list = useQuery<Box[]>({ queryKey: ["boxes-admin"], queryFn: () => fetch("/api/catalogos/boxes").then((r) => r.json()) })
   const create = useMutation({
     mutationFn: (payload: z.infer<typeof boxSchema>) =>
-      fetch("/api/catalogos/boxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
-        .then(async r => {
-          if (!r.ok) throw new Error((await r.json()).message || "Error")
-          return r.json()
-        }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["boxes-admin"] }); toast.success("Box creado") },
+      fetch("/api/catalogos/boxes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).message || "Error")
+        return r.json()
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["boxes-admin"] })
+      toast.success("Box creado")
+    },
     onError: (e: any) => toast.error(String(e.message || e)),
   })
   const remove = useMutation({
     mutationFn: (id: number) => fetch(`/api/catalogos/boxes/${id}`, { method: "DELETE" }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["boxes-admin"] }); toast.success("Box eliminado") },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["boxes-admin"] })
+      toast.success("Box eliminado")
+    },
   })
   return { list, create, remove }
 }
@@ -62,24 +66,28 @@ function BoxesSection() {
   const esp = useCatalogo<string>("cat-especialidades", "/api/catalogos/especialidades")
   const pis = useCatalogo<number>("cat-pisos", "/api/catalogos/pisos")
 
-  const { register, handleSubmit, reset, formState: { errors } } =
-  useForm<z.infer<typeof boxSchema>>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<z.infer<typeof boxSchema>>({
     resolver: zodResolver(boxSchema) as Resolver<z.infer<typeof boxSchema>>,
     defaultValues: { estado: "disponible" } as Partial<z.infer<typeof boxSchema>>,
   })
+
   const onSubmit = handleSubmit((data: z.infer<typeof boxSchema>) => {
-    // validaciones cliente: colisión de ID, piso/especialidad existentes
     const current = boxes.list.data || []
-    if (current.some(b => b.id === data.id)) {
+    if (current.some((b) => b.id === data.id)) {
       toast.error("El ID de box ya existe")
       return
     }
     if (!(pis.list.data || []).includes(data.piso)) {
-      toast.error("Piso no existe en catálogo")
+      toast.error("El piso no existe en el catalogo")
       return
     }
     if (!(esp.list.data || []).includes(data.especialidad)) {
-      toast.error("Especialidad no existe en catálogo")
+      toast.error("La especialidad no existe en el catalogo")
       return
     }
     boxes.create.mutate(data)
@@ -87,67 +95,102 @@ function BoxesSection() {
   })
 
   return (
-    <section className="border rounded p-4">
-      <h2 className="font-medium mb-2">Boxes</h2>
+    <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-secondary">Boxes</h2>
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/60">
+          {(boxes.list.data || []).length} registros
+        </span>
+      </div>
 
-      <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-5 mb-4">
-        <div>
+      <form onSubmit={onSubmit} className="mb-5 grid gap-4 rounded-xl border border-border/60 bg-white/80 p-4 shadow-inner shadow-primary/5 md:grid-cols-5">
+        <div className="space-y-2">
           <Label>ID</Label>
-        <Input type="number" {...register("id", { valueAsNumber: true })} />          {errors.id && <p className="text-xs text-red-600">{errors.id.message}</p>}
+          <Input type="number" {...register("id", { valueAsNumber: true })} placeholder="Ej. 301" />
+          {errors.id && <p className="text-xs text-destructive">{errors.id.message}</p>}
         </div>
-        <div>
+        <div className="space-y-2">
           <Label>Piso</Label>
-          <select className="border rounded h-10 px-2 w-full" {...register("piso", { valueAsNumber: true })}>
-            <option value="">--</option>
-            {(pis.list.data || []).map(p => <option key={p} value={p}>{p}</option>)}
+          <select
+            className="h-11 w-full rounded-xl border border-border/60 bg-white/80 px-4 text-sm font-semibold text-secondary/90 shadow-sm shadow-primary/10 outline-none transition focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-ring/60"
+            {...register("piso", { valueAsNumber: true })}
+          >
+            <option value="">Selecciona</option>
+            {(pis.list.data || []).map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
           </select>
-          {errors.piso && <p className="text-xs text-red-600">{errors.piso.message}</p>}
+          {errors.piso && <p className="text-xs text-destructive">{errors.piso.message}</p>}
         </div>
-        <div className="md:col-span-2">
+        <div className="space-y-2 md:col-span-2">
           <Label>Especialidad</Label>
-          <select className="border rounded h-10 px-2 w-full" {...register("especialidad")}>
-            <option value="">--</option>
-            {(esp.list.data || []).map(e => <option key={e} value={e}>{e}</option>)}
+          <select
+            className="h-11 w-full rounded-xl border border-border/60 bg-white/80 px-4 text-sm font-semibold text-secondary/90 shadow-sm shadow-primary/10 outline-none transition focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-ring/60"
+            {...register("especialidad")}
+          >
+            <option value="">Selecciona</option>
+            {(esp.list.data || []).map((e) => (
+              <option key={e} value={e}>
+                {e}
+              </option>
+            ))}
           </select>
-          {errors.especialidad && <p className="text-xs text-red-600">{errors.especialidad.message}</p>}
+          {errors.especialidad && <p className="text-xs text-destructive">{errors.especialidad.message}</p>}
         </div>
-        <div>
+        <div className="space-y-2">
           <Label>Estado</Label>
-          <select className="border rounded h-10 px-2 w-full" {...register("estado")}>
+          <select
+            className="h-11 w-full rounded-xl border border-border/60 bg-white/80 px-4 text-sm font-semibold text-secondary/90 shadow-sm shadow-primary/10 outline-none transition focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-ring/60"
+            {...register("estado")}
+          >
             <option value="disponible">disponible</option>
             <option value="bloqueado">bloqueado</option>
           </select>
         </div>
         <div className="md:col-span-5">
-          <Button type="submit">Crear box</Button>
+          <Button type="submit" className="w-full md:w-auto">
+            Crear box
+          </Button>
         </div>
       </form>
 
-      <div className="overflow-auto">
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-white/80 shadow-sm shadow-primary/5">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left py-2 pr-2">ID</th>
-              <th className="text-left py-2 pr-2">Piso</th>
-              <th className="text-left py-2 pr-2">Especialidad</th>
-              <th className="text-left py-2 pr-2">Estado</th>
-              <th className="py-2">Acciones</th>
+          <thead className="bg-muted/60 text-secondary/80">
+            <tr className="border-b border-border/50">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">ID</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Piso</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Especialidad</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Estado</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em]">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {(boxes.list.data || []).map(b => (
-              <tr key={b.id} className="border-b">
-                <td className="py-2 pr-2">{b.id}</td>
-                <td className="py-2 pr-2">{b.piso}</td>
-                <td className="py-2 pr-2">{b.especialidad}</td>
-                <td className="py-2 pr-2">{b.estado}</td>
-                <td className="py-2">
-                  <Button variant="outline" size="sm" onClick={() => boxes.remove.mutate(b.id)}>Eliminar</Button>
+            {(boxes.list.data || []).map((b) => (
+              <tr key={b.id} className="border-b border-border/40 last:border-b-0">
+                <td className="px-4 py-3 font-semibold text-secondary">{b.id}</td>
+                <td className="px-4 py-3 text-secondary/80">{b.piso}</td>
+                <td className="px-4 py-3 text-secondary/80">{b.especialidad}</td>
+                <td className="px-4 py-3">
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/70">
+                    {b.estado}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <Button variant="ghost" size="sm" onClick={() => boxes.remove.mutate(b.id)}>
+                    Eliminar
+                  </Button>
                 </td>
               </tr>
             ))}
             {!(boxes.list.data || []).length && (
-              <tr><td colSpan={5} className="py-3 text-muted-foreground">Sin boxes</td></tr>
+              <tr>
+                <td colSpan={5} className="px-4 py-4 text-center text-sm text-muted-foreground">
+                  Aun no hay boxes registrados.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -161,10 +204,19 @@ function TagList<T extends string | number>({ items, onDelete }: { items: T[]; o
   if (!items?.length) return <p className="text-sm text-muted-foreground">Sin datos</p>
   return (
     <div className="flex flex-wrap gap-2">
-      {items.map(v => (
-        <span key={String(v)} className="inline-flex items-center gap-2 border rounded px-2 py-1 text-sm">
+      {items.map((v) => (
+        <span
+          key={String(v)}
+          className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 px-3 py-1 text-xs font-semibold text-secondary/80 shadow-sm shadow-primary/5"
+        >
           {String(v)}
-          <button onClick={() => onDelete(v)} className="text-red-600 hover:underline">x</button>
+          <button
+            onClick={() => onDelete(v)}
+            className="text-destructive transition hover:scale-105"
+            type="button"
+          >
+            x?
+          </button>
         </span>
       ))}
     </div>
@@ -178,61 +230,71 @@ export default function Page() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-semibold mb-4">Administrador de catálogos</h1>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Especialidades */}
-        <section className="border rounded p-4">
-          <h2 className="font-medium mb-2">Especialidades</h2>
-          <form
-            className="flex gap-2 mb-3"
-            onSubmit={async (e) => {
-              e.preventDefault()
-              const form = e.currentTarget as HTMLFormElement
-              const v = String(new FormData(form).get("value") || "").trim()
-              if (!v) return
-              await esp.add.mutateAsync(v)
-              toast.success("Agregado")
-              form.reset()
-            }}
-          >
-            <div className="flex-1">
-              <Label className="sr-only">Nueva especialidad</Label>
-              <Input name="value" placeholder="Ej. Neuro, Trauma, ..." />
-            </div>
-            <Button type="submit">Agregar</Button>
-          </form>
-          <TagList items={esp.list.data || []} onDelete={(v) => esp.del.mutate(v)} />
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-xl shadow-primary/10 backdrop-blur-sm">
+          <div className="space-y-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-secondary/60">Administrador</span>
+            <h1 className="text-3xl font-semibold text-secondary">Catalogos maestros RedSalud</h1>
+            <p className="text-sm text-muted-foreground">
+              Manten actualizados los catalogos base para asegurar una experiencia consistente en toda la red.
+            </p>
+          </div>
         </section>
 
-        {/* Pisos */}
-        <section className="border rounded p-4">
-          <h2 className="font-medium mb-2">Pisos</h2>
-          <form
-            className="flex gap-2 mb-3"
-            onSubmit={async (e) => {
-              e.preventDefault()
-              const form = e.currentTarget as HTMLFormElement
-              const n = Number(new FormData(form).get("value"))
-              if (!Number.isFinite(n)) return
-              await pis.add.mutateAsync(n)
-              toast.success("Agregado")
-              form.reset()
-            }}
-          >
-            <div className="flex-1">
-              <Label className="sr-only">Nuevo piso</Label>
-              <Input name="value" type="number" placeholder="Ej. 3" />
-            </div>
-            <Button type="submit">Agregar</Button>
-          </form>
-          <TagList items={pis.list.data || []} onDelete={(v) => pis.del.mutate(v)} />
-        </section>
-      </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Especialidades</h2>
+            <form
+              className="mb-4 flex flex-col gap-3 sm:flex-row"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const form = e.currentTarget as HTMLFormElement
+                const v = String(new FormData(form).get("value") || "").trim()
+                if (!v) return
+                await esp.add.mutateAsync(v)
+                toast.success("Especialidad agregada")
+                form.reset()
+              }}
+            >
+              <div className="flex-1">
+                <Label className="sr-only">Nueva especialidad</Label>
+                <Input name="value" placeholder="Ej. Neurocirugia, Traumatologia" />
+              </div>
+              <Button type="submit">Agregar</Button>
+            </form>
+            <TagList items={esp.list.data || []} onDelete={(v) => esp.del.mutate(v)} />
+          </section>
 
-      <div className="mt-4">
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Pisos</h2>
+            <form
+              className="mb-4 flex flex-col gap-3 sm:flex-row"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const form = e.currentTarget as HTMLFormElement
+                const n = Number(new FormData(form).get("value"))
+                if (!Number.isFinite(n)) return
+                await pis.add.mutateAsync(n)
+                toast.success("Piso agregado")
+                form.reset()
+              }}
+            >
+              <div className="flex-1">
+                <Label className="sr-only">Nuevo piso</Label>
+                <Input name="value" type="number" placeholder="Ej. 3" />
+              </div>
+              <Button type="submit">Agregar</Button>
+            </form>
+            <TagList items={pis.list.data || []} onDelete={(v) => pis.del.mutate(v)} />
+          </section>
+        </div>
+
         <BoxesSection />
       </div>
     </AppShell>
   )
 }
+
+
+
+

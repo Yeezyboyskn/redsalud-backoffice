@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useState } from "react"
 import { exportCsv } from "@/lib/csv"
-import BoxesBoard from "@/components/agendamiento/BoxesBoard"
+import BoxesBoard from "@/components/Agendamiento/BoxesBoard"
 
 type Box = { id: number; piso: number; especialidad: string; estado: "disponible" | "bloqueado" }
 type Ticket = { id: string; tipo: "bloqueo" | "sistema"; detalle: string; estado: "abierto" | "cerrado"; creadoPor: string }
@@ -39,23 +39,23 @@ function TablaBoxes() {
   ]
 
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2 items-center">
-        <Input placeholder="estado: disponible/bloqueado" value={estado} onChange={(e) => setEstado(e.target.value)} className="max-w-xs" />
-        <Input placeholder="especialidad" value={esp} onChange={(e) => setEsp(e.target.value)} className="max-w-xs" />
-        <Input placeholder="piso" value={piso} onChange={(e) => setPiso(e.target.value)} className="max-w-[120px]" />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Input placeholder="Estado (disponible/bloqueado)" value={estado} onChange={(e) => setEstado(e.target.value)} className="w-full max-w-xs" />
+        <Input placeholder="Especialidad" value={esp} onChange={(e) => setEsp(e.target.value)} className="w-full max-w-xs" />
+        <Input placeholder="Piso" value={piso} onChange={(e) => setPiso(e.target.value)} className="w-full max-w-[120px]" />
         <Button variant="outline" onClick={() => exportCsv("boxes_filtrados", data)} disabled={!data.length}>
           Exportar CSV
         </Button>
       </div>
-      {isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
-      {isError && <p className="text-sm text-red-600">Error al cargar boxes.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Cargando datos de boxes...</p>}
+      {isError && <p className="text-sm text-destructive">Ocurrio un problema al cargar los boxes.</p>}
       {!isLoading && !isError && <DataTable columns={columns} data={data} />}
     </div>
   )
 }
 
-function FormBloqueo() {
+function Formbloqueo() {
   const qc = useQueryClient()
   const { register, handleSubmit, reset } = useForm<{ box: number; fecha: string; motivo: string }>()
   const mut = useMutation({
@@ -66,7 +66,7 @@ function FormBloqueo() {
         body: JSON.stringify(d),
       }).then((r) => r.json()),
     onSuccess: () => {
-      toast.success("Bloqueo creado")
+      toast.success("bloqueo creado")
       qc.invalidateQueries({ queryKey: ["bloqueos"] })
       reset()
     },
@@ -75,28 +75,28 @@ function FormBloqueo() {
     <form
       onSubmit={handleSubmit((d) => {
         if (!d.box || !d.fecha || !d.motivo?.trim()) {
-          toast.error("Complete todos los campos")
+          toast.error("Completa todos los campos")
           return
         }
         mut.mutate({ ...d, box: Number(d.box) })
       })}
-      className="grid sm:grid-cols-3 gap-3"
+      className="grid gap-4 sm:grid-cols-3"
     >
-      <div>
+      <div className="space-y-2">
         <Label>Box</Label>
-        <Input type="number" {...register("box", { valueAsNumber: true })} />
+        <Input type="number" {...register("box", { valueAsNumber: true })} placeholder="Ej. 301" />
       </div>
-      <div>
+      <div className="space-y-2">
         <Label>Fecha</Label>
         <Input type="date" {...register("fecha")} />
       </div>
-      <div>
+      <div className="space-y-2">
         <Label>Motivo</Label>
-        <Input {...register("motivo")} />
+        <Input {...register("motivo")} placeholder="Describe la solicitud" />
       </div>
       <div className="sm:col-span-3">
-        <Button type="submit" disabled={mut.isPending}>
-          {mut.isPending ? "Creando…" : "Crear bloqueo"}
+        <Button type="submit" disabled={mut.isPending} className="w-full sm:w-auto">
+          {mut.isPending ? "Creando..." : "Crear bloqueo"}
         </Button>
       </div>
     </form>
@@ -126,9 +126,9 @@ function Tickets() {
   })
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <form
-        className="flex gap-2"
+        className="flex w-full flex-col gap-3 md:flex-row"
         onSubmit={(e) => {
           e.preventDefault()
           const fd = new FormData(e.currentTarget as HTMLFormElement)
@@ -139,28 +139,38 @@ function Tickets() {
           ;(e.currentTarget as HTMLFormElement).reset()
         }}
       >
-        <select name="tipo" className="border rounded h-10 px-2">
-          <option value="bloqueo">Bloqueo</option>
+        <select
+          name="tipo"
+          className="h-11 w-full rounded-xl border border-border/60 bg-white/80 px-4 text-sm font-semibold text-secondary/90 shadow-sm shadow-primary/10 outline-none transition focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-ring/60 md:w-auto"
+        >
+          <option value="bloqueo">bloqueo</option>
           <option value="sistema">Sistema</option>
         </select>
-        <Input name="detalle" placeholder="Detalle del ticket" className="max-w-xl" />
-        <Button type="submit" disabled={create.isPending}>
-          {create.isPending ? "Enviando…" : "Levantar ticket"}
+        <Input name="detalle" placeholder="Detalle del ticket" className="flex-1" />
+        <Button type="submit" disabled={create.isPending} className="md:w-auto">
+          {create.isPending ? "Enviando..." : "Levantar ticket"}
         </Button>
       </form>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Cargando…</p>}
-      {isError && <p className="text-sm text-red-600">Error al cargar tickets.</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Cargando tickets...</p>}
+      {isError && <p className="text-sm text-destructive">No pudimos cargar los tickets.</p>}
 
       {!isLoading && !isError && (
-        <ul className="divide-y">
+        <ul className="space-y-2">
           {items.map((t) => (
-            <li key={t.id} className="py-2 flex items-center justify-between">
-              <div className="text-sm">
-                <span className="font-medium mr-2">#{t.id}</span>
-                <span className="mr-2">[{t.tipo}]</span>
-                <span className="mr-2">{t.detalle}</span>
-                <span className={t.estado === "abierto" ? "text-amber-600" : "text-green-600"}>{t.estado}</span>
+            <li
+              key={t.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-white/80 px-4 py-3 text-sm text-secondary/90 shadow-sm shadow-primary/5"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-secondary">#{t.id}</span>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary/70">
+                  {t.tipo}
+                </span>
+                <span>{t.detalle}</span>
+                <span className={t.estado === "abierto" ? "text-amber-600 font-medium" : "text-emerald-600 font-medium"}>
+                  {t.estado}
+                </span>
               </div>
               {t.estado === "abierto" && (
                 <Button size="sm" variant="outline" onClick={() => close.mutate(t.id)} disabled={close.isPending}>
@@ -169,7 +179,11 @@ function Tickets() {
               )}
             </li>
           ))}
-          {items.length === 0 && <li className="text-sm text-muted-foreground py-2">Sin tickets</li>}
+          {items.length === 0 && (
+            <li className="rounded-xl border border-dashed border-border/60 px-4 py-3 text-sm text-muted-foreground">
+              Sin tickets registrados.
+            </li>
+          )}
         </ul>
       )}
     </div>
@@ -179,29 +193,44 @@ function Tickets() {
 export default function Page() {
   return (
     <AppShell>
-      <h1 className="text-xl font-semibold mb-3">Agendamiento</h1>
-
-      <div className="grid gap-4">
-        <section className="border rounded p-3">
-          <h2 className="font-medium mb-2">Reasignación rápida de boxes</h2>
-          <BoxesBoard />
+      <div className="space-y-6">
+        <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-xl shadow-primary/10 backdrop-blur-sm">
+          <div className="space-y-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-secondary/60">Agendamiento</span>
+            <h1 className="text-3xl font-semibold text-secondary">Control integral de boxes</h1>
+            <p className="text-sm text-muted-foreground">
+              Optimiza la ocupacion y gestiona solicitudes en tiempo real para toda la red RedSalud.
+            </p>
+          </div>
         </section>
 
-        <section className="border rounded p-3">
-          <h2 className="font-medium mb-2">Boxes</h2>
-          <TablaBoxes />
-        </section>
+        <div className="grid gap-5">
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Reasignacion rapida de boxes</h2>
+            <BoxesBoard />
+          </section>
 
-        <section className="border rounded p-3">
-          <h2 className="font-medium mb-2">Nuevo bloqueo</h2>
-          <FormBloqueo />
-        </section>
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Boxes</h2>
+            <TablaBoxes />
+          </section>
 
-        <section className="border rounded p-3">
-          <h2 className="font-medium mb-2">Tickets</h2>
-          <Tickets />
-        </section>
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Nuevo bloqueo</h2>
+            <Formbloqueo />
+          </section>
+
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Tickets</h2>
+            <Tickets />
+          </section>
+        </div>
       </div>
     </AppShell>
   )
 }
+
+
+
+
+
