@@ -67,4 +67,15 @@ http.get("/api/doctors", ({ request }) => {
 
   // KPI ocupación por piso
   http.get("/api/kpis/ocupacion", () => HttpResponse.json(kpiOcupacion)),
+
+http.patch("/api/boxes/:id", async ({ params, request }) => {
+  const id = Number(params.id)
+  const { estado } = (await request.json()) as { estado: "disponible" | "bloqueado" }
+  const i = boxes.findIndex(b => b.id === id)
+  if (i === -1) return HttpResponse.json({ message:"not found" }, { status:404 })
+  boxes[i] = { ...boxes[i], estado }
+  return HttpResponse.json(boxes[i])
+}),
+
+
 ]

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useState } from "react"
 import { exportCsv } from "@/lib/csv"
+import BoxesBoard from "@/components/agendamiento/BoxesBoard"
 
 type Box = { id:number; piso:number; especialidad:string; estado:string }
 
@@ -70,10 +71,24 @@ export default function Page(){
   return (
     <AppShell>
       <h1 className="text-xl font-semibold mb-3">Agendamiento</h1>
-      <div className="grid gap-4">
-        <section className="border rounded p-3"><h2 className="font-medium mb-2">Boxes</h2><TablaBoxes/></section>
-        <section className="border rounded p-3"><h2 className="font-medium mb-2">Nuevo bloqueo</h2><FormBloqueo/></section>
-      </div>
+<div className="grid gap-4">
+  <section className="border rounded p-3">
+    <h2 className="font-medium mb-2">Reasignación rápida de boxes</h2>
+    <BoxesBoard />
+  </section>
+
+  <section className="border rounded p-3">
+    <h2 className="font-medium mb-2">Boxes</h2>
+    <TablaBoxes />
+  </section>
+
+  <section className="border rounded p-3">
+    <h2 className="font-medium mb-2">Nuevo bloqueo</h2>
+    <FormBloqueo />
+  </section>
+</div>
+
+
     </AppShell>
   )
 }
