@@ -1,21 +1,37 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { NextResponse, NextRequest } from "next/server"
 
-const roleRoot = { doctor:"/doctor", agendamiento:"/agendamiento", jefatura:"/jefatura", admin:"/admin" } as const
+const ACL: Record<string, Array<"doctor"|"agendamiento"|"jefatura"|"admin">> = {
+  "/doctor": ["doctor","admin"],
+  "/agendamiento": ["agendamiento","admin"],
+  "/jefatura": ["jefatura","admin"],
+  "/admin": ["admin"],
+}
 
 export function middleware(req: NextRequest) {
-  const p = req.nextUrl.pathname
-  if (p === "/mockServiceWorker.js") return NextResponse.next()
-  if (p === "/") return NextResponse.redirect(new URL("/login", req.url))
-  if (p.startsWith("/login")) return NextResponse.next()
+  const { pathname } = req.nextUrl
+  const role = req.cookies.get("role")?.value
 
-  const role = req.cookies.get("role")?.value as keyof typeof roleRoot | undefined
-  if (!role) return NextResponse.redirect(new URL("/login", req.url))
-
-  const expected = roleRoot[role]
-  if (["/doctor","/agendamiento","/jefatura","/admin"].some(r=>p.startsWith(r)) && !p.startsWith(expected)) {
-    return NextResponse.redirect(new URL(expected, req.url))
+  // redirigir home -> /login
+  if (pathname === "/") {
+    const url = req.nextUrl.clone()
+    url.pathname = "/login"
+    return NextResponse.redirect(url)
   }
+
+  // proteger secciones
+  for (const base of Object.keys(ACL)) {
+    if (pathname.startsWith(base)) {
+      if (!role || !ACL[base].includes(role as any)) {
+        const url = req.nextUrl.clone()
+        url.pathname = "/login"
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   return NextResponse.next()
 }
-export const config = { matcher: ["/((?!_next|static|favicon.ico|mockServiceWorker\\.js).*)"] }
+
+export const config = {
+  matcher: ["/","/doctor/:path*","/agendamiento/:path*","/jefatura/:path*","/admin/:path*"],
+}
