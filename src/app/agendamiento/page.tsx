@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useState } from "react"
 import { exportCsv } from "@/lib/csv"
-import BoxesBoard from "@/components/Agendamiento/BoxesBoard"
+import BoxesBoard from "@/components/agendamiento/BoxesBoard"
 
 type Box = { id: number; piso: number; especialidad: string; estado: "disponible" | "bloqueado" }
 type Ticket = { id: string; tipo: "bloqueo" | "sistema"; detalle: string; estado: "abierto" | "cerrado"; creadoPor: string }
@@ -31,7 +31,7 @@ function TablaBoxes() {
     queryFn: () => fetch(`/api/boxes${qs.toString() ? `?${qs}` : ""}`).then((r) => r.json()),
   })
 
-  const columns: ColumnDef<Box, any>[] = [
+  const columns: ColumnDef<Box, unknown>[] = [
     { header: "Box", accessorKey: "id" },
     { header: "Piso", accessorKey: "piso" },
     { header: "Especialidad", accessorKey: "especialidad" },

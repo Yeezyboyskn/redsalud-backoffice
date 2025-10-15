@@ -1,0 +1,80 @@
+Proyecto: RedSalud Backoffice
+================================
+
+Vision general
+--------------
+Plataforma web construida con Next.js 15 y React 19 para centralizar la gestion operativa de la red RedSalud. El foco actual es ofrecer un prototipo navegable que muestre el look and feel corporativo y simule los flujos clave de los equipos internos.
+
+Alcance funcional actual
+------------------------
+- Inicio de sesion por RUT y seleccion de perfil, con validacion de formato y guardado de datos en cookies.
+- Layout unificado con barra lateral, topbar con cambio de tema y cierre de sesion, y soporte de modo claro u oscuro.
+- Cuatro tableros principales orientados a cada rol interno (doctor, agendamiento, jefatura, admin).
+- Operaciones simuladas sobre catalogos de boxes, pisos, especialidades, bloqueos y tickets mediante API mock.
+- Exportacion de datos a CSV desde paneles operativos para ser tratados en planillas de Excel.
+
+Perfiles de usuario y necesidades cubiertas
+-------------------------------------------
+Doctor
+- Consulta de boxes asignados, estado operativo y bloqueos vigentes.
+- Visualizacion de KPIs semanales (ocupacion por dia) y proximos turnos.
+- Solicitud de bloqueos rapidos que se notifican al equipo de agendamiento.
+- Descarga de reportes propios en CSV para compartir o analizar.
+
+Agendamiento
+- Vista drag and drop para reasignar boxes entre estados disponibles o bloqueados.
+- Buscador y tabla filtrable de boxes por estado, especialidad y piso.
+- Formulario para ingresar bloqueos y seguimiento de tickets operativos.
+- Exportacion puntual de resultados filtrados a planillas CSV.
+
+Jefatura
+- Dashboard ejecutivo con grafico de ocupacion por piso.
+- Indicadores cargados dinamicamente para facilitar decisiones tacticas.
+
+Admin
+- Mantenimiento de catalogos maestros (especialidades, pisos y boxes).
+- Alta y baja de boxes con validaciones cruzadas y feedback en tiempo real.
+- Control de elementos maestros que impactan al resto de los modulos.
+
+Arquitectura tecnica de alto nivel
+---------------------------------
+- Frontend Next.js (app router) sobre TypeScript, estilado con Tailwind CSS y class variance authority para variantes de componentes.
+- Estado remoto y fetch asincrono con React Query; devtools activados en entorno de desarrollo.
+- Theming manejado por next-themes con almacenamiento en client side.
+- Componentes de UI reutilizables (Button, Card, Input, DataTable) para mantener consistencia visual.
+- Layout AppShell que envuelve las paginas protegidas con Sidebar y Topbar comunes.
+
+Fuentes de datos y conexiones
+-----------------------------
+- Actualmente las llamadas a `/api/*` son atendidas por MSW (Mock Service Worker) definido en `src/mocks/handlers.ts`.
+- Se simulan colecciones en memoria para doctors, boxes, bloqueos, tickets y KPIs, lo que permite iterar sin backend real.
+- El inicio de sesion persiste `rut` y `role` en cookies de navegador, usadas por middleware para control de acceso.
+- `exportCsv` genera archivos CSV en el cliente que pueden abrirse en Excel u otras planillas.
+
+Consideraciones para integracion real
+-------------------------------------
+- Sustituir MSW por servicios REST o GraphQL conectados a bases de datos corporativas (por ejemplo PostgreSQL o SQL Server).
+- Definir endpoints seguros para operaciones CRUD de catalogos, bloqueos y tickets con autenticacion corporativa.
+- Incorporar sincronizacion de reportes con data warehouse o conector directo a planillas compartidas (SharePoint, Google Sheets) segun la necesidad del negocio.
+- Alinear los identificadores (RUT, IDs de boxes) con los sistemas maestros ya existentes en RedSalud.
+
+Seguridad y gobierno
+--------------------
+- Middleware (`src/middleware.ts`) protege rutas segun role almacenado en cookie; redirige a login cuando la sesion no es valida.
+- Boton de cierre de sesion borra cookies y fuerza nueva autenticacion.
+- Falta cifrado y renovacion de tokens; queda pendiente integrar con single sign on corporativo.
+
+Dependencias destacadas
+-----------------------
+- @tanstack/react-query para cache de datos y sincronizacion.
+- @dnd-kit para interaccion drag and drop en reasignacion de boxes.
+- recharts para visualizacion de KPI.
+- react-hook-form mas zod para formularios y validaciones de login y admin.
+- msw para mock de servicios durante desarrollo.
+
+Ideas para la presentacion
+--------------------------
+1. Introducir el problema y mostrar la pantalla de login con la narrativa "personas al centro".
+2. Recorrer rapidamente los cuatro perfiles resaltando beneficios para cada equipo.
+3. Explicar la arquitectura mock actual y el plan de integracion con sistemas reales (bases de datos, planillas, APIs).
+4. Cerrar con roadmap: seguridad corporativa, integraciones y despliegue gradual por sedes.

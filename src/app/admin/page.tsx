@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import AppShell from "@/components/common/AppShell"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -49,7 +49,10 @@ function useBoxes() {
       qc.invalidateQueries({ queryKey: ["boxes-admin"] })
       toast.success("Box creado")
     },
-    onError: (e: any) => toast.error(String(e.message || e)),
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error ?? "")
+      toast.error(message)
+    },
   })
   const remove = useMutation({
     mutationFn: (id: number) => fetch(`/api/catalogos/boxes/${id}`, { method: "DELETE" }),

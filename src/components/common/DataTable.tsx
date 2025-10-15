@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 import { useState } from "react"
 import {
   ColumnDef,
@@ -10,7 +10,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
-export default function DataTable<T>({ columns, data }: { columns: ColumnDef<T, any>[]; data: T[] }) {
+export default function DataTable<T>({ columns, data }: { columns: ColumnDef<T, unknown>[]; data: T[] }) {
   const [sorting, setSorting] = useState<SortingState>([])
   const table = useReactTable({
     data,
