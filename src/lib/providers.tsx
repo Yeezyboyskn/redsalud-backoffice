@@ -12,7 +12,7 @@ export default function Providers({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
       import("../mocks/browser").then(({ worker }) =>
-        worker.start({ serviceWorker: { url: "/mockServiceWorker.js" } })
+        worker?.start({ serviceWorker: { url: "/mockServiceWorker.js" } })
       )
     }
   }, [])
