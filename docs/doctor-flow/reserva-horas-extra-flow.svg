@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1100" viewBox="0 0 1200 1100">
+  <defs>
+    <style>
+      .title { font-family: 'Segoe UI', Arial, sans-serif; font-size: 30px; font-weight: 600; fill: #1F2933; }
+      .subtitle { font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; fill: #52606D; }
+      .label { font-family: 'Segoe UI', Arial, sans-serif; font-size: 16px; fill: #102A43; }
+      .small { font-family: 'Segoe UI', Arial, sans-serif; font-size: 14px; fill: #52606D; }
+      .process { fill: #F2F7FA; stroke: #2F4858; stroke-width: 2; }
+      .decision { fill: #FFE8C8; stroke: #C4742C; stroke-width: 2; }
+      .start-end { fill: #EAF7F0; stroke: #2F855A; stroke-width: 2; }
+      .annotation { fill: #FFFFFF; stroke: #9AA5B1; stroke-width: 1.5; }
+      .arrow { stroke: #2F4858; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+      .arrow-soft { stroke: #829AB1; stroke-width: 2; fill: none; marker-end: url(#arrowhead); stroke-dasharray: 6 6; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#2F4858"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="1100" fill="#F8FAFC"/>
+  <rect x="60" y="120" width="1080" height="980" fill="#FFFFFF" stroke="#D9E2EC" stroke-width="2" rx="24" ry="24"/>
+
+  <text x="600" y="70" text-anchor="middle" class="title">Vista reserva de horas extra o recuperacion</text>
+  <text x="600" y="102" text-anchor="middle" class="subtitle">Flujo guiado en tres pasos para publicar o solicitar cupos adicionales</text>
+
+  <!-- Start -->
+  <circle cx="600" cy="170" r="34" class="start-end"/>
+  <text x="600" y="170" text-anchor="middle" dominant-baseline="middle" class="label" font-weight="600">Inicio seccion</text>
+  <text x="600" y="202" text-anchor="middle" class="small">Doctor baja desde panel clinico</text>
+
+  <!-- Paso 1 -->
+  <rect x="470" y="230" width="280" height="100" rx="22" ry="22" class="process"/>
+  <text x="610" y="278" text-anchor="middle" class="label">
+    <tspan x="610" dy="-10" font-weight="600">Paso 1: elegir contexto</tspan>
+    <tspan x="610" dy="24">Especialidad, sede y piso compatibles</tspan>
+    <tspan x="610" dy="24">Sincroniza combos segun contrato</tspan>
+  </text>
+
+  <!-- Paso 2 consulta -->
+  <rect x="470" y="340" width="280" height="100" rx="22" ry="22" class="process"/>
+  <text x="610" y="388" text-anchor="middle" class="label">
+    <tspan x="610" dy="-10" font-weight="600">Paso 2: consultar disponibilidad</tspan>
+    <tspan x="610" dy="24">React Query: `/api/disponibilidad`</tspan>
+    <tspan x="610" dy="24">Rango semanal con metadata</tspan>
+  </text>
+
+  <!-- Decision dias -->
+  <polygon points="610,450 696,510 610,570 524,510" class="decision"/>
+  <text x="610" y="510" text-anchor="middle" class="label" font-weight="600">Hay dias con boxes libres?</text>
+  <text x="690" y="490" class="small" font-weight="600">Si</text>
+  <text x="552" y="560" class="small" font-weight="600">No</text>
+
+  <!-- No availability -->
+  <rect x="240" y="590" width="260" height="90" rx="22" ry="22" class="process"/>
+  <text x="370" y="634" text-anchor="middle" class="label">
+    <tspan x="370" dy="-10" font-weight="600">Mostrar vacio</tspan>
+    <tspan x="370" dy="24">Cajas informan sin oferta</tspan>
+  </text>
+  <path d="M524 510 H370 V590" class="arrow"/>
+  <circle cx="370" cy="700" r="26" class="start-end"/>
+  <text x="370" y="700" text-anchor="middle" dominant-baseline="middle" class="label" font-weight="600">Esperar</text>
+  <text x="370" y="732" text-anchor="middle" class="small">Doctor reintenta cambio de filtros</text>
+
+  <!-- Paso 2b -->
+  <rect x="720" y="590" width="300" height="90" rx="22" ry="22" class="process"/>
+  <text x="870" y="632" text-anchor="middle" class="label">
+    <tspan x="870" dy="-10" font-weight="600">Seleccionar dia y box</tspan>
+    <tspan x="870" dy="24">Cards muestran conflictos y motivos</tspan>
+  </text>
+
+  <!-- Decision slot -->
+  <polygon points="870,700 950,760 870,820 790,760" class="decision"/>
+  <text x="870" y="760" text-anchor="middle" class="label" font-weight="600">Box posee tramos libres?</text>
+  <text x="950" y="740" class="small" font-weight="600">Si</text>
+  <text x="822" y="800" class="small" font-weight="600">No</text>
+
+  <!-- No slots -->
+  <rect x="640" y="840" width="260" height="90" rx="22" ry="22" class="process"/>
+  <text x="770" y="884" text-anchor="middle" class="label">
+    <tspan x="770" dy="-10" font-weight="600">Informar sin tramos</tspan>
+    <tspan x="770" dy="24">Invita a elegir otro box o dia</tspan>
+  </text>
+  <path d="M822 760 H770 V840" class="arrow"/>
+
+  <!-- Seleccion slot -->
+  <rect x="920" y="840" width="240" height="100" rx="22" ry="22" class="process"/>
+  <text x="1040" y="888" text-anchor="middle" class="label">
+    <tspan x="1040" dy="-10" font-weight="600">Marcar tramo</tspan>
+    <tspan x="1040" dy="24">Evalua limites y flag `requiereAprobacion`</tspan>
+  </text>
+
+  <!-- Decision aprobacion -->
+  <polygon points="1040,950 1110,1000 1040,1050 970,1000" class="decision"/>
+  <text x="1040" y="1000" text-anchor="middle" class="label" font-weight="600">Requiere aprobacion?</text>
+  <text x="1110" y="980" class="small" font-weight="600">Si</text>
+  <text x="980" y="1036" class="small" font-weight="600">No</text>
+
+  <!-- Envio -->
+  <rect x="520" y="840" width="320" height="90" rx="24" ry="24" class="process"/>
+  <text x="680" y="880" text-anchor="middle" class="label">
+    <tspan x="680" dy="-10" font-weight="600">Paso 3: resumen y envio</tspan>
+    <tspan x="680" dy="24">Muestra fecha, box y tramo elegido</tspan>
+    <tspan x="680" dy="24">Permite escribir motivo opcional</tspan>
+  </text>
+
+  <rect x="520" y="940" width="320" height="70" rx="24" ry="24" class="process"/>
+  <text x="680" y="978" text-anchor="middle" class="label">
+    <tspan x="680" dy="-10" font-weight="600">Enviar a `/api/inscripciones`</tspan>
+    <tspan x="680" dy="24">Confirma o abre solicitud operativa</tspan>
+  </text>
+
+  <circle cx="680" cy="1070" r="30" class="start-end"/>
+  <text x="680" y="1070" text-anchor="middle" dominant-baseline="middle" class="label" font-weight="600">Resultado</text>
+  <text x="680" y="1100" text-anchor="middle" class="small">Toast de exito / informacion</text>
+
+  <!-- Connectors -->
+  <line x1="600" y1="204" x2="610" y2="230" class="arrow"/>
+  <line x1="610" y1="320" x2="610" y2="340" class="arrow"/>
+  <line x1="610" y1="440" x2="610" y2="450" class="arrow"/>
+  <path d="M696 510 H720" class="arrow"/>
+  <line x1="870" y1="680" x2="870" y2="700" class="arrow"/>
+  <path d="M950 760 H1060 V840" class="arrow"/>
+  <line x1="1040" y1="940" x2="1040" y2="950" class="arrow"/>
+  <path d="M980 1000 H840 V840" class="arrow"/>
+  <line x1="680" y1="930" x2="680" y2="940" class="arrow"/>
+  <line x1="680" y1="1010" x2="680" y2="1040" class="arrow"/>
+
+  <!-- Annotations -->
+  <rect x="140" y="260" width="240" height="160" rx="18" ry="18" class="annotation"/>
+  <text x="260" y="300" text-anchor="middle" class="label">
+    <tspan x="260" dy="-8" font-weight="600">Sincronizacion de filtros</tspan>
+    <tspan x="260" dy="22">- Cambiar sede limpia piso</tspan>
+    <tspan x="260" dy="22">- Cambiar especialidad reinicia semana</tspan>
+    <tspan x="260" dy="22">- Se preserva contrato base</tspan>
+  </text>
+  <path d="M470 310 H380 V260" class="arrow-soft"/>
+
+  <rect x="120" y="740" width="240" height="200" rx="18" ry="18" class="annotation"/>
+  <text x="240" y="780" text-anchor="middle" class="label">
+    <tspan x="240" dy="-8" font-weight="600">Apoyos a la decision</tspan>
+    <tspan x="240" dy="22">- Avisos de conflictos por box</tspan>
+    <tspan x="240" dy="22">- Indicador de ventana minima</tspan>
+    <tspan x="240" dy="22">- Proximas sugerencias laterales</tspan>
+    <tspan x="240" dy="22">- Lista de solicitudes recientes</tspan>
+  </text>
+  <path d="M240 740 V720 H470" class="arrow-soft"/>
+</svg>
