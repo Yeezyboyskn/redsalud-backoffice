@@ -238,15 +238,38 @@ async function main() {
     await extraColl.updateOne({ doctor_rut: e.doctor_rut, fecha: e.fecha, inicio: e.inicio }, { $set: e }, { upsert: true })
   }
 
+  // Dataset de pisos por especialidad y heurística por box para completar 'piso' en la plantilla semanal
+  const specItems = await db.collection("specialty_floors").find({}).toArray()
+  const norm = (s) => (s ? String(s).trim().toLowerCase() : "")
+  const specMap = new Map(specItems.map((it) => [norm(it.especialidad), it.pisos]))
+  const guessPiso = (box) => {
+    const n = Number(box)
+    if (Number.isNaN(n)) return null
+    const g = Math.floor(n / 100)
+    return g
+  }
+  const weeklyFinal = weeklyEnriched.map((w) => {
+    let piso = w.piso
+    if (!piso) {
+      const pisosSpec = specMap.get(norm(w.especialidad))
+      if (Array.isArray(pisosSpec) && pisosSpec.length === 1) piso = pisosSpec[0]
+    }
+    if (!piso && w.box) {
+      const g = guessPiso(w.box)
+      if (g || g === 0) piso = g
+    }
+    return { ...w, piso }
+  })
+
   // Insert plantillas semanales (reescribe por doctor)
   const weeklyColl = db.collection("weekly_slots_import")
   await weeklyColl.createIndex({ doctor_rut: 1, dia_semana: 1, inicio: 1 }, { unique: true })
-  const rutsWeekly = Array.from(new Set(weeklyEnriched.map((w) => w.doctor_rut)))
+  const rutsWeekly = Array.from(new Set(weeklyFinal.map((w) => w.doctor_rut)))
   if (rutsWeekly.length) {
     await weeklyColl.deleteMany({ doctor_rut: { $in: rutsWeekly } })
   }
-  if (weeklyEnriched.length) {
-    await weeklyColl.insertMany(weeklyEnriched)
+  if (weeklyFinal.length) {
+    await weeklyColl.insertMany(weeklyFinal)
   }
 
   console.log("Seed completado ✅")
