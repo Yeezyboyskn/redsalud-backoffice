@@ -95,8 +95,12 @@ async function main() {
   const flags = Object.fromEntries(process.argv.slice(3).map((arg) => arg.split("=").map((s) => s.replace(/^--/, ""))))
   const docNameOverride = flags["doctors-sheet"] || process.env.SEED_SHEET_DOCTORS
   const hrsNameOverride = flags["hours-sheet"] || process.env.SEED_SHEET_HOURS
-  const doctorsSheet = wb.Sheets[docNameOverride || findSheetName(wb.SheetNames, ["doctor", "medic", "profesional"])]
-  const hoursSheet = wb.Sheets[hrsNameOverride || findSheetName(wb.SheetNames, ["hora", "agenda", "dispon", "slot", "turno", "tramo"])]
+  const doctorsSheet = wb.Sheets[
+    docNameOverride || findSheetName(wb.SheetNames, ["doctor", "medic", "profesional", "ofertas", "horario"])
+  ]
+  const hoursSheet = wb.Sheets[
+    hrsNameOverride || findSheetName(wb.SheetNames, ["hora", "agenda", "dispon", "slot", "turno", "tramo", "ofertas", "horario"])
+  ]
   const doctorsRows = sheetToObjects(doctorsSheet)
   const hoursRows = sheetToObjects(hoursSheet)
 
@@ -106,28 +110,32 @@ async function main() {
     const rut = (r.rut || r.doctor_rut || r.id || r.usuario || "").toString()
     if (!rut) continue
     const nombre = r.nombre || r.doctor || r.profesor || r.medico || null
-    const piso = r.piso || r.piso_numero || r.piso_asignado || null
+    const piso = r.piso || r.piso_numero || r.piso_asignado || r.nuevos_pisos || null
     const box = r.box || r.box_id || r.box_asignado || null
     const especialidad = r.especialidad || r.especialidades || null
-    const current = doctorsMap.get(rut) || { rut, nombre, especialidad, pisos: new Set(), boxes: new Set() }
-    if (piso) current.pisos.add(String(piso))
+    const correo = (r.correo || r.email || r.mail || "").toString().trim() || null
+    const telefonoRaw = (r.telefono || r.fono || r.telefono_contacto || "").toString()
+    const telefono = telefonoRaw ? telefonoRaw.replace(/[^0-9+]/g, "").trim() : null
+    const current =
+      doctorsMap.get(rut) || { rut, nombre, especialidad, correo: correo ? correo.toLowerCase() : null, telefono, pisos: new Set(), boxes: new Set() }
+    if (piso) String(piso)
+      .split(/[,\/]|\s+/)
+      .filter(Boolean)
+      .forEach((p) => current.pisos.add(String(p).trim()))
     if (box) current.boxes.add(String(box))
+    if (!current.correo && correo) current.correo = correo.toLowerCase()
+    if (!current.telefono && telefono) current.telefono = telefono
     doctorsMap.set(rut, current)
   }
 
-  const doctors = Array.from(doctorsMap.values()).map((d) => ({
-    rut: d.rut,
-    nombre: d.nombre,
-    especialidad: d.especialidad,
-    pisos: Array.from(d.pisos),
-    boxes: Array.from(d.boxes),
-  }))
+  // Doctores será materializado después de extraer boxes desde los tramos semanales
 
   // Transform hours. Soportamos dos formatos:
   // 1) Formato por fecha (fecha/inicio/fin)
   // 2) Formato semanal por dia (columnas LUNES/MARTES/... con "HH:MM a HH:MM (BOX)")
   const extra = []
   const weekly = []
+  const boxesByRut = new Map()
   const dayCols = [
     { keys: ["lunes", "lunes ", "lun"], dow: 1 },
     { keys: ["martes", "martes ", "mar"], dow: 2 },
@@ -178,10 +186,31 @@ async function main() {
       for (const seg of segs) {
         if (seg.inicio && seg.fin) {
           weekly.push({ doctor_rut: rut, dia_semana: dow, inicio: seg.inicio, fin: seg.fin, box: seg.box, frecuencia_min: frecuencia ?? null })
+          if (seg.box) {
+            const set = boxesByRut.get(rut) || new Set()
+            set.add(String(seg.box))
+            boxesByRut.set(rut, set)
+          }
         }
       }
     }
   }
+
+  // Completar boxes desde los tramos semanales
+  for (const [rut, set] of boxesByRut.entries()) {
+    const doc = doctorsMap.get(rut)
+    if (doc) for (const b of set) doc.boxes.add(b)
+  }
+
+  const doctors = Array.from(doctorsMap.values()).map((d) => ({
+    rut: d.rut,
+    nombre: d.nombre,
+    especialidad: d.especialidad,
+    correo: d.correo || null,
+    telefono: d.telefono || null,
+    pisos: Array.from(d.pisos),
+    boxes: Array.from(d.boxes),
+  }))
 
   const dry = Boolean(process.env.SEED_DRY_RUN)
   console.log(`Encontrados: doctores=${doctors.length}, tramos_fecha=${extra.length}, tramos_semana=${weekly.length}`)
