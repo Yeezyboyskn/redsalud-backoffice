@@ -227,34 +227,95 @@ function TagList<T extends string | number>({ items, onDelete }: { items: T[]; o
 }
 
 function SpecialtyFloorsSection() {
-  const { data = [], isLoading } = useQuery<{ especialidad: string; pisos: (number|string)[] }[]>({
-    queryKey: ['specialty-floors'],
-    queryFn: () => fetch('/api/catalogos/specialty-floors').then(r => r.json()),
+  const qc = useQueryClient()
+  const { data = [], isLoading } = useQuery<{ especialidad: string; pisos: (number | string)[] }[]>({
+    queryKey: ["specialty-floors"],
+    queryFn: () => fetch("/api/catalogos/specialty-floors").then((r) => r.json()),
   })
+  const add = useMutation({
+    mutationFn: async (payload: { especialidad: string; pisos: string }) => {
+      const res = await fetch("/api/catalogos/specialty-floors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ especialidad: payload.especialidad, pisos: payload.pisos }),
+      })
+      if (!res.ok) throw new Error((await res.json()).message || "Error")
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty-floors"] }),
+  })
+  const del = useMutation({
+    mutationFn: async (especialidad: string) => {
+      const res = await fetch(`/api/catalogos/specialty-floors?especialidad=${encodeURIComponent(especialidad)}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error((await res.json()).message || "Error")
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["specialty-floors"] }),
+  })
+
   return (
     <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-secondary">Pisos por especialidad</h2>
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/60">{isLoading ? '...' : data.length + ' registros'}</span>
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/60">{isLoading ? "..." : data.length + " registros"}</span>
       </div>
+
+      <form
+        className="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+        onSubmit={async (e) => {
+          e.preventDefault()
+          const form = e.currentTarget as HTMLFormElement
+          const esp = String(new FormData(form).get("especialidad") || "").trim()
+          const pisos = String(new FormData(form).get("pisos") || "").trim()
+          if (!esp || !pisos) return
+          await add.mutateAsync({ especialidad: esp, pisos })
+          toast.success("Registro guardado")
+          form.reset()
+        }}
+      >
+        <div className="space-y-1">
+          <Label>Especialidad</Label>
+          <Input name="especialidad" placeholder="Ej. Traumatologia" />
+        </div>
+        <div className="space-y-1">
+          <Label>Pisos (separados por coma o espacio)</Label>
+          <Input name="pisos" placeholder="Ej. 3, 4, 5" />
+        </div>
+        <div className="flex items-end">
+          <Button type="submit" disabled={add.isPending} className="w-full sm:w-auto">
+            {add.isPending ? "Guardando..." : "Guardar"}
+          </Button>
+        </div>
+      </form>
+
       <div className="overflow-auto rounded-xl border border-border/60">
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-secondary/80">
             <tr className="border-b border-border/50">
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Especialidad</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Pisos</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em]">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {data.map((row) => (
               <tr key={row.especialidad} className="border-b border-border/40 last:border-b-0">
                 <td className="px-4 py-3 font-semibold text-secondary">{row.especialidad}</td>
-                <td className="px-4 py-3 text-secondary/80">{row.pisos.join(', ')}</td>
+                <td className="px-4 py-3 text-secondary/80">{row.pisos.join(", ")}</td>
+                <td className="px-4 py-3 text-right">
+                  <Button variant="ghost" size="sm" onClick={() => del.mutate(row.especialidad)}>
+                    Eliminar
+                  </Button>
+                </td>
               </tr>
             ))}
             {!data.length && (
               <tr>
-                <td colSpan={2} className="px-4 py-4 text-center text-sm text-muted-foreground">Sin datos cargados.</td>
+                <td colSpan={3} className="px-4 py-4 text-center text-sm text-muted-foreground">
+                  Sin datos cargados.
+                </td>
               </tr>
             )}
           </tbody>
