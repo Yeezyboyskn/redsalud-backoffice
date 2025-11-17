@@ -392,6 +392,8 @@ export default function Page() {
 
         <SpecialtyFloorsSection />
         <BoxesSection />
+
+        <DoctorsSearchSection />
       </div>
     </AppShell>
   )
@@ -400,4 +402,113 @@ export default function Page() {
 
 
 
+
+function DoctorsSearchSection() {
+  type Doctor = {
+    rut: string
+    nombre: string
+    especialidad: string
+    pisos?: (number | string)[]
+    boxes?: string[]
+    correo?: string | null
+    telefono?: string | null
+  }
+
+  const [params, setParams] = React.useState({ especialidad: "", piso: "", box: "", q: "" })
+  const queryKey = React.useMemo(() => ["catalogo-doctores", params], [params])
+  const query = useQuery<{ items: Doctor[] }>({
+    queryKey,
+    queryFn: async () => {
+      const usp = new URLSearchParams()
+      if (params.especialidad) usp.set("especialidad", params.especialidad)
+      if (params.piso) usp.set("piso", params.piso)
+      if (params.box) usp.set("box", params.box)
+      if (params.q) usp.set("q", params.q)
+      const res = await fetch(`/api/catalogos/doctors?${usp.toString()}`)
+      return res.json()
+    },
+  })
+
+  const items = query.data?.items || []
+
+  return (
+    <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-secondary">Buscar doctores por filtros</h2>
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/60">
+          {query.isLoading ? "Cargando..." : `${items.length} resultado(s)`}
+        </span>
+      </div>
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+        <div className="space-y-1">
+          <Label>Especialidad</Label>
+          <Input
+            placeholder="Traumatologia"
+            value={params.especialidad}
+            onChange={(e) => setParams((p) => ({ ...p, especialidad: e.target.value }))}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Piso</Label>
+          <Input
+            placeholder="Ej. 11"
+            value={params.piso}
+            onChange={(e) => setParams((p) => ({ ...p, piso: e.target.value }))}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Box</Label>
+          <Input
+            placeholder="Ej. 1102"
+            value={params.box}
+            onChange={(e) => setParams((p) => ({ ...p, box: e.target.value }))}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>Nombre (contiene)</Label>
+          <Input
+            placeholder="Buscar por nombre"
+            value={params.q}
+            onChange={(e) => setParams((p) => ({ ...p, q: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      <div className="overflow-auto rounded-xl border border-border/60">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-secondary/80">
+            <tr className="border-b border-border/50">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">RUT</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Nombre</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Especialidad</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Pisos</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Boxes</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Contacto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((d) => (
+              <tr key={d.rut} className="border-b border-border/40 last:border-b-0">
+                <td className="px-4 py-3 font-semibold text-secondary">{d.rut}</td>
+                <td className="px-4 py-3 text-secondary/80">{d.nombre}</td>
+                <td className="px-4 py-3 text-secondary/80">{d.especialidad}</td>
+                <td className="px-4 py-3 text-secondary/80">{(d.pisos || []).join(", ")}</td>
+                <td className="px-4 py-3 text-secondary/80">{(d.boxes || []).join(", ")}</td>
+                <td className="px-4 py-3 text-secondary/80">{[d.correo, d.telefono].filter(Boolean).join(" · ")}</td>
+              </tr>
+            ))}
+            {!items.length && (
+              <tr>
+                <td colSpan={6} className="px-4 py-4 text-center text-sm text-muted-foreground">
+                  {query.isLoading ? "Cargando..." : "Sin resultados"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
 
