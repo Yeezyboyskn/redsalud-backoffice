@@ -213,7 +213,7 @@ for (const { keys, dow } of dayCols) {
     especialidad: d.especialidad,
     correo: d.correo || null,
     telefono: d.telefono || null,
-    pisos: Array.from(d.pisos),
+    pisos: Array.from(d.pisos).map((p)=>(!Number.isNaN(Number(p))?Number(p):p)),
     boxes: Array.from(d.boxes),
   }))
 
@@ -285,6 +285,7 @@ main().catch((err) => {
   console.error(err)
   process.exit(1)
 })
+
 
 
 
