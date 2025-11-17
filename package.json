@@ -7,8 +7,9 @@
                     "build":  "next build --turbopack",
                     "start":  "next start",
                     "lint":  "eslint",
-    "seed:excel":  "node scripts/seed-from-xlsx.mjs data.xlsx",
-    "seed:floors": "node scripts/seed-specialty-floors.mjs \"pisos por especialidad.xlsx\""
+                    "seed:excel":  "node scripts/seed-from-xlsx.mjs data.xlsx",
+                    "seed:floors":  "node scripts/seed-specialty-floors.mjs \"pisos por especialidad.xlsx\"",
+                    "seed:new":  "node scripts/seed-new-schedule.mjs \"horario y box new version.xlsx\" \"Horario\""
                 },
     "dependencies":  {
                          "@dnd-kit/core":  "^6.3.1",
