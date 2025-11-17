@@ -73,10 +73,24 @@ export default function ExtraHoursPanel() {
   const itemsDia = (list.data?.items ?? []).filter((i) => i.fecha === selectedDate)
 
   const dow = selectedDate ? new Date(selectedDate).getUTCDay() : null
+  const [pisoFiltro, setPisoFiltro] = useState<string>("")
+  const pisosDisponibles = useMemo(() => {
+    const set = new Set<number>()
+    for (const it of weekly.data?.items ?? []) {
+      if (typeof (it as any).piso === "number") set.add((it as any).piso as number)
+    }
+    return Array.from(set).sort((a, b) => a - b)
+  }, [weekly.data])
+
   const sugeridasDia = useMemo(() => {
     if (!dow) return [] as WeeklyItem[]
-    return (weekly.data?.items ?? []).filter((w) => w.dia_semana === dow)
-  }, [weekly.data, dow])
+    let arr = (weekly.data?.items ?? []).filter((w) => w.dia_semana === dow)
+    if (pisoFiltro) {
+      const target = Number(pisoFiltro)
+      arr = arr.filter((w: any) => w.piso === target)
+    }
+    return arr
+  }, [weekly.data, dow, pisoFiltro])
 
   const generarHoras = () => {
     const paso = 15 // granularidad fina
@@ -109,19 +123,36 @@ export default function ExtraHoursPanel() {
           counters={counters}
         />
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary/70">Tramos del día</h3>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs">Duración</Label>
-              <select className="h-9 rounded-lg border border-border/60 bg-white/80 px-2 text-xs" value={duracion} onChange={(e) => setDuracion(Number(e.target.value))}>
-                <option value={30}>30 min</option>
-                <option value={45}>45 min</option>
-                <option value={60}>60 min</option>
-                <option value={90}>90 min</option>
-              </select>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-secondary/70">Tramos del día</h3>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">Duración</Label>
+                <select className="h-9 rounded-lg border border-border/60 bg-white/80 px-2 text-xs" value={duracion} onChange={(e) => setDuracion(Number(e.target.value))}>
+                  <option value={30}>30 min</option>
+                  <option value={45}>45 min</option>
+                  <option value={60}>60 min</option>
+                  <option value={90}>90 min</option>
+                </select>
+                {pisosDisponibles.length > 0 && (
+                  <>
+                    <Label className="text-xs">Piso</Label>
+                    <select
+                      className="h-9 rounded-lg border border-border/60 bg-white/80 px-2 text-xs"
+                      value={pisoFiltro}
+                      onChange={(e) => setPisoFiltro(e.target.value)}
+                    >
+                      <option value="">Todos</option>
+                      {pisosDisponibles.map((p) => (
+                        <option key={p} value={String(p)}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
 
           <div className="grid max-h-64 grid-cols-2 gap-2 overflow-auto pr-1">
             {selectedDate ? (

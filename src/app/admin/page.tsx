@@ -1,6 +1,7 @@
 "use client"
 
 import AppShell from "@/components/common/AppShell"
+import React, { useMemo, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -414,8 +415,8 @@ function DoctorsSearchSection() {
     telefono?: string | null
   }
 
-  const [params, setParams] = React.useState({ especialidad: "", piso: "", box: "", q: "" })
-  const queryKey = React.useMemo(() => ["catalogo-doctores", params], [params])
+  const [params, setParams] = useState({ especialidad: "", piso: "", box: "", q: "" })
+  const queryKey = useMemo(() => ["catalogo-doctores", params], [params])
   const query = useQuery<{ items: Doctor[] }>({
     queryKey,
     queryFn: async () => {
