@@ -238,11 +238,15 @@ async function main() {
     await extraColl.updateOne({ doctor_rut: e.doctor_rut, fecha: e.fecha, inicio: e.inicio }, { $set: e }, { upsert: true })
   }
 
-  // Insert plantillas semanales
+  // Insert plantillas semanales (reescribe por doctor)
   const weeklyColl = db.collection("weekly_slots_import")
   await weeklyColl.createIndex({ doctor_rut: 1, dia_semana: 1, inicio: 1 }, { unique: true })
-  for (const w of weekly) {
-    await weeklyColl.updateOne({ doctor_rut: w.doctor_rut, dia_semana: w.dia_semana, inicio: w.inicio }, { $set: w }, { upsert: true })
+  const rutsWeekly = Array.from(new Set(weeklyEnriched.map((w) => w.doctor_rut)))
+  if (rutsWeekly.length) {
+    await weeklyColl.deleteMany({ doctor_rut: { $in: rutsWeekly } })
+  }
+  if (weeklyEnriched.length) {
+    await weeklyColl.insertMany(weeklyEnriched)
   }
 
   console.log("Seed completado ✅")
@@ -253,3 +257,5 @@ main().catch((err) => {
   console.error(err)
   process.exit(1)
 })
+
+
