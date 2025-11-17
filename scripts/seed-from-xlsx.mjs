@@ -231,7 +231,7 @@ for (const { keys, dow } of dayCols) {
 
   // Upsert doctors
   const doctorsColl = db.collection("doctors")
-  await doctorsColl.createIndex({ rut: 1 }, { unique: true })
+  await doctorsColl.createIndex({ rut: 1 }, { unique: true })\n  await doctorsColl.createIndex({ especialidad: 1 })\n  await doctorsColl.createIndex({ pisos: 1 })\n  await doctorsColl.createIndex({ especialidad: 1, pisos: 1 })\n  await doctorsColl.createIndex({ boxes: 1 })
   for (const d of doctors) {
     await doctorsColl.updateOne({ rut: d.rut }, { $set: d }, { upsert: true })
   }
@@ -285,6 +285,7 @@ main().catch((err) => {
   console.error(err)
   process.exit(1)
 })
+
 
 
 
