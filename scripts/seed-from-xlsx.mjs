@@ -110,7 +110,7 @@ async function main() {
     const rut = (r.rut || r.doctor_rut || r.id || r.usuario || "").toString()
     if (!rut) continue
     const nombre = r.nombre || r.doctor || r.profesor || r.medico || null
-    const piso = r.piso || r.piso_numero || r.piso_asignado || r.nuevos_pisos || null
+    const piso = r.piso || r.piso_numero || r.piso_asignado || r.nuevos_pisos || r.pisos || null
     const box = r.box || r.box_id || r.box_asignado || null
     const especialidad = r.especialidad || r.especialidades || null
     const correo = (r.correo || r.email || r.mail || "").toString().trim() || null
@@ -179,21 +179,26 @@ async function main() {
 
     // Caso 2: por dia de semana en columnas
     const rowKeys = Object.keys(r)
-    for (const { keys, dow } of dayCols) {
-      const key = rowKeys.find((k) => keys.includes(String(k).toLowerCase()))
-      if (!key) continue
-      const segs = parseSegments(r[key])
-      for (const seg of segs) {
-        if (seg.inicio && seg.fin) {
-          weekly.push({ doctor_rut: rut, dia_semana: dow, inicio: seg.inicio, fin: seg.fin, box: seg.box, frecuencia_min: frecuencia ?? null })
-          if (seg.box) {
-            const set = boxesByRut.get(rut) || new Set()
-            set.add(String(seg.box))
-            boxesByRut.set(rut, set)
-          }
-        }
+for (const { keys, dow } of dayCols) {
+  const key = rowKeys.find((k) => keys.includes(String(k).toLowerCase()))
+  if (!key) continue
+  // Fallback para columna de box por día (box_lunes, box_martes, ...)
+  const dayMap = { 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado' }
+  const boxKey = ox_
+  const fallbackBox = r[boxKey] != null ? Number(String(r[boxKey]).match(/\d+/)?.[0]) : null
+  const segs = parseSegments(r[key])
+  for (const seg of segs) {
+    if (!seg.box && (fallbackBox || fallbackBox === 0)) seg.box = fallbackBox
+    if (seg.inicio && seg.fin) {
+      weekly.push({ doctor_rut: rut, dia_semana: dow, inicio: seg.inicio, fin: seg.fin, box: seg.box, frecuencia_min: frecuencia ?? null })
+      if (seg.box) {
+        const set = boxesByRut.get(rut) || new Set()
+        set.add(String(seg.box))
+        boxesByRut.set(rut, set)
       }
     }
+  }
+}
   }
 
   // Completar boxes desde los tramos semanales
@@ -258,7 +263,7 @@ async function main() {
       const g = guessPiso(w.box)
       if (g || g === 0) piso = g
     }
-    return { ...w, piso }
+    const pisoNum = piso != null && !Number.isNaN(Number(piso)) ? Number(piso) : null\n    return { ...w, piso: pisoNum }
   })
 
   // Insert plantillas semanales (reescribe por doctor)
@@ -280,5 +285,8 @@ main().catch((err) => {
   console.error(err)
   process.exit(1)
 })
+
+
+
 
 

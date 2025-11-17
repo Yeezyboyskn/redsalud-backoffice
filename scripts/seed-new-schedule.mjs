@@ -127,6 +127,7 @@ async function main() {
           if (Array.isArray(pisosSpec) && pisosSpec.length === 1) piso = pisosSpec[0]
         }
         if (!piso && boxVal) piso = guessFloorFromBox(boxVal)
+        const pisoNum = piso != null && !Number.isNaN(Number(piso)) ? Number(piso) : null
         weekly.push({
           doctor_rut: rut,
           dia_semana: dow,
@@ -136,7 +137,7 @@ async function main() {
           frecuencia_min: null,
           doctor_nombre: nombre,
           especialidad,
-          piso,
+          piso: pisoNum,
         })
       }
     }
@@ -185,4 +186,3 @@ main().catch((err) => {
   console.error(err)
   process.exit(1)
 })
-
