@@ -6,7 +6,7 @@ import Providers from "@/lib/providers"
 const headingFont = Nunito({ subsets: ["latin"], weight: ["600", "700", "800"], variable: "--font-brand-heading", display: "swap" })
 const bodyFont = Open_Sans({ subsets: ["latin"], weight: ["400", "600"], variable: "--font-brand-body", display: "swap" })
 
-export const metadata: Metadata = { title: "RedSalud Backoffice", description: "Prototipo UI" }
+export const metadata: Metadata = { title: "RedSalud Rematador de box", description: "Prototipo UI" }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
