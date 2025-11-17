@@ -226,6 +226,43 @@ function TagList<T extends string | number>({ items, onDelete }: { items: T[]; o
   )
 }
 
+function SpecialtyFloorsSection() {
+  const { data = [], isLoading } = useQuery<{ especialidad: string; pisos: (number|string)[] }[]>({
+    queryKey: ['specialty-floors'],
+    queryFn: () => fetch('/api/catalogos/specialty-floors').then(r => r.json()),
+  })
+  return (
+    <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-secondary">Pisos por especialidad</h2>
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/60">{isLoading ? '...' : data.length + ' registros'}</span>
+      </div>
+      <div className="overflow-auto rounded-xl border border-border/60">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/60 text-secondary/80">
+            <tr className="border-b border-border/50">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Especialidad</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em]">Pisos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row) => (
+              <tr key={row.especialidad} className="border-b border-border/40 last:border-b-0">
+                <td className="px-4 py-3 font-semibold text-secondary">{row.especialidad}</td>
+                <td className="px-4 py-3 text-secondary/80">{row.pisos.join(', ')}</td>
+              </tr>
+            ))}
+            {!data.length && (
+              <tr>
+                <td colSpan={2} className="px-4 py-4 text-center text-sm text-muted-foreground">Sin datos cargados.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
 /* ============ pantalla completa ============ */
 export default function Page() {
   const esp = useCatalogo<string>("cat-especialidades", "/api/catalogos/especialidades")
@@ -292,11 +329,13 @@ export default function Page() {
           </section>
         </div>
 
+        <SpecialtyFloorsSection />
         <BoxesSection />
       </div>
     </AppShell>
   )
 }
+
 
 
 
