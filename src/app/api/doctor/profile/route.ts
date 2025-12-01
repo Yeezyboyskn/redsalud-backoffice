@@ -32,6 +32,9 @@ export async function GET(req: NextRequest) {
     rut: doc.rut,
     nombre: doc.nombre ?? "",
     especialidad: doc.especialidad ?? "",
+    correo: doc.correo ?? "",
+    telefono: doc.telefono ?? "",
+    pisos: Array.isArray(doc.pisos) ? doc.pisos : [],
     boxes,
   }
   return NextResponse.json(payload)
