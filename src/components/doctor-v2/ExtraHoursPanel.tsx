@@ -70,7 +70,6 @@ export default function ExtraHoursPanel() {
     queryKey: ["doctor-profile"],
     queryFn: async () => (await fetch("/api/doctor/profile")).json(),
   })
-  const doctorRut = profile.data?.rut ?? ""
 
   const list = useQuery<ListResponse>({
     queryKey: ["extra-hours", START_YEAR, END_YEAR],
@@ -78,11 +77,10 @@ export default function ExtraHoursPanel() {
   })
 
   const availability = useQuery<{ items: AvailabilityItem[] }>({
-    queryKey: ["availability", START_YEAR, END_YEAR, doctorRut],
-    enabled: !profile.isLoading && Boolean(doctorRut),
+    queryKey: ["availability", START_YEAR, END_YEAR],
+    enabled: true,
     queryFn: async () => {
-      const rutParam = doctorRut ? `&doctorRut=${encodeURIComponent(doctorRut)}` : ""
-      const url = `/api/availability?from=${START_YEAR}-01-01&to=${END_YEAR}-12-31${rutParam}`
+      const url = `/api/availability?from=${START_YEAR}-01-01&to=${END_YEAR}-12-31&all=true&shareBlocked=true&especialidad=all`
       return (await fetch(url)).json()
     },
   })
