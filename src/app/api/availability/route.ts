@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
   const doctorRut = sanitizeRut(url.searchParams.get("doctorRut") || url.searchParams.get("rut") || req.cookies.get("rut")?.value || "")
   const includeAll = url.searchParams.get("all") === "true" || url.searchParams.get("especialidad") === "all" || !doctorRut
   const shareBlocked = url.searchParams.get("shareBlocked") === "true" || url.searchParams.get("includeReleased") === "true"
-  const specialtyParam = url.searchParams.get("especialidad") || url.searchParams.get("specialty") || ""
+  const specialtyParamRaw = url.searchParams.get("especialidad") || url.searchParams.get("specialty") || ""
+  const specialtyParam = specialtyParamRaw === "all" ? "" : specialtyParamRaw
   const maxDays = 730
   const start = new Date(`${from}T00:00:00`)
   const end = new Date(`${to}T00:00:00`)
