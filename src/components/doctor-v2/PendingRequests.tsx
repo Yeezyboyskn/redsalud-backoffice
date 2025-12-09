@@ -34,7 +34,7 @@ export default function PendingRequests() {
       fecha: e.fecha,
       inicio: e.inicio,
       fin: e.fin,
-      motivo: e.boxId ? `Hora extra ? Box ${e.boxId}` : "Hora extra / recuperativa",
+      motivo: e.boxId ? `Hora extra · Box ${e.boxId}` : "Hora extra / recuperativa",
       estado: "pendiente",
       tipo: "extra" as const,
     })),
@@ -46,7 +46,7 @@ export default function PendingRequests() {
     <Card className="rounded-2xl border border-border/60 bg-white/95 shadow-lg shadow-primary/10">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg text-secondary">Solicitudes pendientes</CardTitle>
-        <p className="text-sm text-secondary/70">Bloqueos y horas extra en revisi?n</p>
+        <p className="text-sm text-secondary/70">Bloqueos y horas extra en revisión</p>
       </CardHeader>
       <CardContent className="space-y-2">
         {isLoading && <p className="text-sm text-muted-foreground">Cargando solicitudes...</p>}
@@ -56,7 +56,7 @@ export default function PendingRequests() {
             <div className="flex flex-col">
               <span className="font-semibold text-secondary">{fmt(b.fecha)}</span>
               <span className="text-xs text-secondary/70">
-                {b.inicio} - {b.fin} ? {b.motivo}
+                {b.inicio} - {b.fin} · {b.motivo}
               </span>
             </div>
             <div className="flex flex-col items-end gap-1">

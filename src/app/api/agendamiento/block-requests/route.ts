@@ -59,12 +59,13 @@ export async function PUT(req: NextRequest) {
   await logAudit({ actorRut: req.cookies.get("rut")?.value, action: "change_status", entity: "block_requests", entityId: body.id, details: { estado: body.estado } })
 
   // Si se aprueba el bloqueo, lo publicamos como hora extra compartida por especialidad para colegas
+  // Esto permite que otros médicos de la misma especialidad puedan tomar este espacio como hora extra/recuperativa
   if (body.estado === "aprobado") {
     const doctor = await db.collection("doctors").findOne({ rut: d.doctor_rut })
     const especialidad = doctor?.especialidad ?? null
     // Evita duplicar si ya se publicó este bloque como extra
     const exists = await db.collection("extra_hours").findOne({ source_block_id: String(d._id) })
-    if (!exists) {
+    if (!exists && especialidad) {
       await db.collection("extra_hours").insertOne({
         doctor_rut: d.doctor_rut,
         owner_rut: d.doctor_rut,
@@ -75,9 +76,16 @@ export async function PUT(req: NextRequest) {
         inicio: d.inicio,
         fin: d.fin,
         boxId: d.boxId ?? null,
+        piso: doctor?.pisos?.[0] ?? null,
         createdAt: new Date().toISOString(),
+        estado: "disponible", // Disponible para ser tomado por otros médicos
       } as any)
     }
+  }
+  
+  // Si se rechaza el bloqueo, eliminamos la hora extra asociada si existe
+  if (body.estado === "rechazado") {
+    await db.collection("extra_hours").deleteMany({ source_block_id: String(d._id) })
   }
 
   try {

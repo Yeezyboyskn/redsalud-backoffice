@@ -31,8 +31,8 @@ function useCatalogo<T>(key: string, url: string) {
 type Box = { id: number; piso: number; especialidad: string; estado: "disponible" | "bloqueado" }
 
 const boxSchema = z.object({
-  id: z.coerce.number().int().positive({ message: "ID invalido" }),
-  piso: z.coerce.number().int().positive({ message: "Piso invalido" }),
+  id: z.coerce.number().int().positive({ message: "ID inválido" }),
+  piso: z.coerce.number().int().positive({ message: "Piso inválido" }),
   especialidad: z.string().min(1, "Requerido"),
   estado: z.enum(["disponible", "bloqueado"]).default("disponible"),
 })
@@ -87,11 +87,11 @@ function BoxesSection() {
       return
     }
     if (!(pis.list.data || []).includes(data.piso)) {
-      toast.error("El piso no existe en el catalogo")
+      toast.error("El piso no existe en el catálogo")
       return
     }
     if (!(esp.list.data || []).includes(data.especialidad)) {
-      toast.error("La especialidad no existe en el catalogo")
+      toast.error("La especialidad no existe en el catálogo")
       return
     }
     boxes.create.mutate(data)
@@ -336,9 +336,9 @@ export default function Page() {
         <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-xl shadow-primary/10 backdrop-blur-sm">
           <div className="space-y-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-secondary/60">Administrador</span>
-            <h1 className="text-3xl font-semibold text-secondary">Catalogos maestros RedSalud</h1>
+            <h1 className="text-3xl font-semibold text-secondary">Catálogos maestros RedSalud</h1>
             <p className="text-sm text-muted-foreground">
-              Manten actualizados los catalogos base para asegurar una experiencia consistente en toda la red.
+              Mantén actualizados los catálogos base para asegurar una experiencia consistente en toda la red.
             </p>
           </div>
         </section>

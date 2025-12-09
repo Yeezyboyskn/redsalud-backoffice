@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
   const body = await req.json()
   const parsed = bloqueoOperativoSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ message: "payload invalido", issues: parsed.error.flatten() }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ message: "payload inválido", issues: parsed.error.flatten() }, { status: 400 })
   const data = parsed.data
   const doc: any = { ...data, estado: "pendiente", createdAt: new Date().toISOString() }
   const res = await db.collection("operational_blocks").insertOne(doc)

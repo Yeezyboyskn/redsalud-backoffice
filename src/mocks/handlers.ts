@@ -153,9 +153,9 @@ const especialidadesCatalog: Especialidad[] = [
 const especialidadMap = new Map(especialidadesCatalog.map((e) => [e.id, e]))
 
 const sedesCatalog: Sede[] = [
-  { id: "scl-central", nombre: "Centro Medico Santiago" },
-  { id: "scl-providencia", nombre: "Clinica Providencia" },
-  { id: "scl-la-dehesa", nombre: "Clinica La Dehesa" },
+  { id: "scl-central", nombre: "Centro Médico Santiago" },
+  { id: "scl-providencia", nombre: "Clínica Providencia" },
+  { id: "scl-la-dehesa", nombre: "Clínica La Dehesa" },
 ]
 
 const pisosCatalog: Piso[] = [
@@ -284,7 +284,7 @@ const reglasCompatibilidad: ReglaCompatibilidad[] = [
     especialidadId: "trauma",
     boxId: 302,
     permitido: true,
-    motivo: "Box compartido requiere aprobacion",
+    motivo: "Box compartido requiere aprobación",
     requiereAprobacion: true,
   },
   {
@@ -306,14 +306,14 @@ const reglasCompatibilidad: ReglaCompatibilidad[] = [
     especialidadId: "med-gen",
     pisoId: "scl-central-3",
     permitido: true,
-    motivo: "Uso puntual requiere validacion",
+    motivo: "Uso puntual requiere validación",
     requiereAprobacion: true,
   },
 ]
 const tickets: Ticket[] = [
-  { id: "15", tipo: "sistema", detalle: "Actualizacion pendiente de fichas", estado: "abierto", creadoPor: "Soporte" },
+  { id: "15", tipo: "sistema", detalle: "Actualización pendiente de fichas", estado: "abierto", creadoPor: "Soporte" },
   { id: "14", tipo: "bloqueo", detalle: "Solicitud horario extra box 301", estado: "abierto", creadoPor: "Agendamiento" },
-  { id: "13", tipo: "bloqueo", detalle: "Revision climatizacion piso 4", estado: "cerrado", creadoPor: "Infraestructura" },
+  { id: "13", tipo: "bloqueo", detalle: "Revisión climatización piso 4", estado: "cerrado", creadoPor: "Infraestructura" },
 ]
 
 const solicitudesInscripcionInicial: SolicitudInscripcion[] = [
@@ -343,7 +343,7 @@ const solicitudesInscripcionInicial: SolicitudInscripcion[] = [
     ],
     metadata: {
       ventanaMinimaHoras: VENTANA_MINIMA_HORAS,
-      conflictos: ["Requiere aprobacion por uso compartido"],
+      conflictos: ["Requiere aprobación por uso compartido"],
       slaHoras: SLA_HORAS,
       slaVenceEnHoras: SLA_HORAS - 4,
     },
@@ -358,7 +358,7 @@ const solicitudesInscripcionInicial: SolicitudInscripcion[] = [
     tramo: { inicio: "09:00", fin: "11:00" },
     estado: "aprobada",
     requiereAprobacion: false,
-    motivo: "Reprogramacion por paciente preferente",
+    motivo: "Reprogramación por paciente preferente",
     createdBy: "doctor",
     createdAt: "2025-09-29T10:00:00Z",
     updatedAt: "2025-09-30T09:00:00Z",
@@ -834,7 +834,7 @@ const createSolicitud = (payload: SolicitudPayload, doctor: Doctor, piso: Piso, 
   tickets.unshift({
     id: siguienteIdTicket(),
     tipo: "inscripcion",
-    detalle: `Solicitud ${nueva.id} pendiente de aprobacion`,
+    detalle: `Solicitud ${nueva.id} pendiente de aprobación`,
     estado: "abierto",
     creadoPor: "Sistema",
     relacionadoCon: nueva.id,

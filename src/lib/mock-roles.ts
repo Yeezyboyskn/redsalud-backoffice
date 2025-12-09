@@ -23,6 +23,7 @@ export const MOCK_USERS: MockUser[] = [
   { rut: "20.538.048-5", role: "jefatura", password: GENERIC_PASSWORD, name: "Oscar Farias Baeza", email: "oscar.farias.ext@redsalud.com" },
   // Admin
   { rut: "44.444.444-4", role: "admin", password: GENERIC_PASSWORD, name: "Administrador" },
+  { rut: "12.345.678-9", role: "admin", password: "admin123", name: "Administrador" },
 ]
 
 const map = new Map(MOCK_USERS.map((u) => [cleanRut(u.rut), u]))

@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    requireRole(req, ["doctor"])
+    requireRole(req, ["doctor", "admin"])
   } catch (res) {
     return res as NextResponse
   }

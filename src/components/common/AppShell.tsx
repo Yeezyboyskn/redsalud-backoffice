@@ -2,10 +2,25 @@
 import Sidebar from "./Sidebar"
 import Topbar from "./Topbar"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
+
+function getCookie(name: string) {
+  if (typeof document === "undefined") return ""
+  const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"))
+  return m ? decodeURIComponent(m[2]) : ""
+}
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const showSidebar = Boolean(pathname && pathname.startsWith("/admin"))
+  const [role, setRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRole(getCookie("role") || null)
+  }, [])
+
+  // Solo mostrar sidebar si el usuario es admin
+  const showSidebar = Boolean(pathname && !pathname.startsWith("/login") && pathname !== "/" && role === "admin")
+  
   return (
     <div className="flex min-h-screen">
       {showSidebar ? <Sidebar /> : null}

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const db = await getDb()
   const body = await req.json()
   const parsed = ticketSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ message: "payload invalido", issues: parsed.error.flatten() }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ message: "payload inválido", issues: parsed.error.flatten() }, { status: 400 })
   const doc: any = { ...parsed.data, estado: "abierto", createdAt: new Date().toISOString(), creadoPor: req.cookies.get("rut")?.value ?? "anon" }
   const res = await db.collection("tickets").insertOne(doc)
   await logAudit({ actorRut: req.cookies.get("rut")?.value, action: "create", entity: "tickets", entityId: String(res.insertedId), details: parsed.data })

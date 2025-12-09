@@ -14,7 +14,7 @@ import { roleHomePath } from "@/lib/mock-roles"
 
 const schema = z.object({
   rut: z.string().min(7, "RUT requerido"),
-  password: z.string().min(4, "Minimo 4 caracteres"),
+  password: z.string().min(4, "Mínimo 4 caracteres"),
 })
 
 type FormData = z.infer<typeof schema>
@@ -38,14 +38,14 @@ export default function LoginPage() {
     })
     if (!res.ok) {
       const payload = await res.json().catch(() => ({}))
-      toast.error(payload?.message || "No pudimos iniciar sesion")
+      toast.error(payload?.message || "No pudimos iniciar sesión")
       return
     }
     const payload = await res.json()
     const role = payload.role
     setCookie("rut", cleanRut(data.rut))
     setCookie("role", role)
-    toast.success("Sesion iniciada")
+    toast.success("Sesión iniciada")
     router.push(roleHomePath(role))
   }
 
@@ -64,7 +64,7 @@ export default function LoginPage() {
             </div>
           </div>
           <p className="text-lg leading-relaxed text-primary-foreground/80">
-            Conectate con la red clinica mas grande de Chile y gestiona tus operaciones con el sello humano de RedSalud.
+            Conéctate con la red clínica más grande de Chile y gestiona tus operaciones con el sello humano de RedSalud.
           </p>
           <ul className="space-y-3 text-sm text-primary-foreground/75">
             <li className="flex items-start gap-3">
@@ -77,7 +77,7 @@ export default function LoginPage() {
             </li>
             <li className="flex items-start gap-3">
               <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] font-semibold">3</span>
-              <span>Autenticacion rapida y segura segun tu perfil de usuario.</span>
+              <span>Autenticación rápida y segura según tu perfil de usuario.</span>
             </li>
           </ul>
         </div>
@@ -97,11 +97,11 @@ export default function LoginPage() {
                 {errors.rut && <p className="text-xs text-destructive">{errors.rut.message}</p>}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Contrasena</Label>
+                <Label htmlFor="password">Contraseña</Label>
                 <Input id="password" type="password" autoComplete="current-password" {...register("password")} />
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
-              {/* Rol se detecta automaticamente por RUT; no se muestra selector */}
+              {/* Rol se detecta automáticamente por RUT; no se muestra selector */}
               <Button type="submit" disabled={isSubmitting} className="w-full">{isSubmitting ? "Ingresando..." : "Ingresar"}</Button>
             </form>
             <p className="text-xs text-muted-foreground">Si tienes problemas para ingresar, contactanos en soporte@RedSalud.cl</p>

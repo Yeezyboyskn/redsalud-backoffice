@@ -40,17 +40,32 @@ async function run() {
   const sites = [{ code: "SCL-001", nombre: "RedSalud Santiago Centro" }]
   const towers = [{ code: "T1", site: "SCL-001", nombre: "Torre A" }]
   const floors = [
-    { code: "P1", tower: "T1", nombre: "Piso 1" },
-    { code: "P2", tower: "T1", nombre: "Piso 2" },
-    { code: "P3", tower: "T1", nombre: "Piso 3" },
-    { code: "P4", tower: "T1", nombre: "Piso 4" },
+    { code: "P1", tower: "T1", nombre: "Piso 1", piso: 1 },
+    { code: "P2", tower: "T1", nombre: "Piso 2", piso: 2 },
+    { code: "P3", tower: "T1", nombre: "Piso 3", piso: 3 },
+    { code: "P4", tower: "T1", nombre: "Piso 4", piso: 4 },
+    { code: "P5", tower: "T1", nombre: "Piso 5", piso: 5 },
   ]
 
+  // Boxes con sus especialidades - cada box está diseñado para una especialidad específica
   const boxes = [
-    { code: "101", floor: "P1", tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
-    { code: "102", floor: "P2", tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
-    { code: "201", floor: "P3", tower: "T1", site: "SCL-001", especialidad: "TRAUMA", estado: "disponible" },
-    { code: "301", floor: "P4", tower: "T1", site: "SCL-001", especialidad: "NEURO", estado: "disponible" },
+    // Piso 1 - Medicina General
+    { id: 101, code: "101", floor: "P1", piso: 1, tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
+    { id: 102, code: "102", floor: "P1", piso: 1, tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
+    { id: 103, code: "103", floor: "P1", piso: 1, tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
+    // Piso 2 - Medicina General
+    { id: 201, code: "201", floor: "P2", piso: 2, tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
+    { id: 202, code: "202", floor: "P2", piso: 2, tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
+    // Piso 3 - Traumatología
+    { id: 301, code: "301", floor: "P3", piso: 3, tower: "T1", site: "SCL-001", especialidad: "TRAUMA", estado: "disponible" },
+    { id: 302, code: "302", floor: "P3", piso: 3, tower: "T1", site: "SCL-001", especialidad: "TRAUMA", estado: "disponible" },
+    { id: 303, code: "303", floor: "P3", piso: 3, tower: "T1", site: "SCL-001", especialidad: "TRAUMA", estado: "disponible" },
+    // Piso 4 - Neurocirugía
+    { id: 401, code: "401", floor: "P4", piso: 4, tower: "T1", site: "SCL-001", especialidad: "NEURO", estado: "disponible" },
+    { id: 402, code: "402", floor: "P4", piso: 4, tower: "T1", site: "SCL-001", especialidad: "NEURO", estado: "disponible" },
+    // Piso 5 - Varias especialidades
+    { id: 501, code: "501", floor: "P5", piso: 5, tower: "T1", site: "SCL-001", especialidad: "MED-GEN", estado: "disponible" },
+    { id: 502, code: "502", floor: "P5", piso: 5, tower: "T1", site: "SCL-001", especialidad: "TRAUMA", estado: "disponible" },
   ]
 
   const doctors = [
@@ -119,7 +134,8 @@ async function run() {
   await upsertMany(db.collection("sites"), sites, ["code"])
   await upsertMany(db.collection("towers"), towers, ["code"])
   await upsertMany(db.collection("floors"), floors, ["code"])
-  await upsertMany(db.collection("boxes"), boxes, ["code"])
+  // Usar id o code como clave única para boxes
+  await upsertMany(db.collection("boxes"), boxes, ["id"])
   await upsertMany(db.collection("doctors"), doctors, ["rut"])
   await upsertMany(db.collection("users"), users, ["rut"])
   await upsertMany(db.collection("weekly_slots_import"), weeklySlots, ["doctor_rut", "dia_semana", "inicio", "fin", "boxId"])
@@ -131,7 +147,10 @@ async function run() {
   await db.collection("operational_blocks").createIndex({ fecha: 1, boxId: 1 })
   await db.collection("weekly_slots_import").createIndex({ doctor_rut: 1, dia_semana: 1 })
   await db.collection("extra_hours").createIndex({ doctor_rut: 1, fecha: 1 })
-  await db.collection("boxes").createIndex({ code: 1 }, { unique: true })
+  await db.collection("boxes").createIndex({ id: 1 }, { unique: true, sparse: true })
+  await db.collection("boxes").createIndex({ code: 1 }, { unique: true, sparse: true })
+  await db.collection("boxes").createIndex({ especialidad: 1 })
+  await db.collection("boxes").createIndex({ piso: 1 })
   await db.collection("doctors").createIndex({ rut: 1 }, { unique: true })
   await db.collection("doctors").createIndex({ rut_clean: 1 })
 

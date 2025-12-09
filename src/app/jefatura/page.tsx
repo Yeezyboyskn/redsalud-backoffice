@@ -29,15 +29,15 @@ export default function Page() {
         <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-xl shadow-primary/10 backdrop-blur-sm">
           <div className="space-y-2">
             <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-secondary/60">Jefatura</span>
-            <h1 className="text-3xl font-semibold text-secondary">Vision ejecutiva de ocupacion</h1>
+            <h1 className="text-3xl font-semibold text-secondary">Visión ejecutiva de ocupación</h1>
             <p className="text-sm text-muted-foreground">
-              Monitorea como se distribuye la ocupacion por piso para anticipar decisiones operativas.
+              Monitorea cómo se distribuye la ocupación por piso para anticipar decisiones operativas.
             </p>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm" aria-label="KPI de ocupacion por piso">
-          <h2 className="mb-4 text-lg font-semibold text-secondary">Ocupacion por piso (%)</h2>
+        <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm" aria-label="KPI de ocupación por piso">
+          <h2 className="mb-4 text-lg font-semibold text-secondary">Ocupación por piso (%)</h2>
 
           {isLoading && <p className="text-sm text-muted-foreground">Cargando indicadores...</p>}
           {isError && <p className="text-sm text-destructive">No pudimos cargar los KPIs.</p>}
@@ -54,7 +54,7 @@ export default function Page() {
                   <YAxis domain={[0, 100]} stroke="rgba(18,67,71,0.6)" tickFormatter={toPercent} tickLine={false} axisLine={false} />
                   <Tooltip
                     cursor={{ fill: "rgba(0, 162, 154, 0.08)" }}
-                    formatter={(v: number) => [toPercent(v), "Ocupacion"]}
+                    formatter={(v: number) => [toPercent(v), "Ocupación"]}
                     labelFormatter={(label) => `Piso ${label}`}
                   />
                   <Bar dataKey="ocupacion" radius={[8, 8, 0, 0]} fill="var(--primary)" />

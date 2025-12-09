@@ -48,6 +48,10 @@ export async function GET(req: NextRequest) {
   const opsFilter: any = { fecha: { $gte: from, $lte: to } }
   const opsAll = await db.collection("operational_blocks").find(opsFilter).toArray()
 
+  // También considerar horas extra ya reservadas como ocupadas
+  const extraHoursFilter: any = { fecha: { $gte: from, $lte: to } }
+  const extraHoursAll = await db.collection("extra_hours").find(extraHoursFilter).toArray()
+
   // Si no hay slots semanales cargados, generamos slots sintéticos para todos los boxes (horario base 09-13 y 14-18 lun-vie)
   if (weekly.length === 0) {
     const boxes = await db.collection("boxes").find().toArray()
@@ -87,8 +91,28 @@ export async function GET(req: NextRequest) {
   }
   for (const b of blocksAll) addBusy(b.fecha, b.boxId, sanitizeRut(b.doctor_rut), b.inicio, b.fin)
   for (const b of opsAll) addBusy(b.fecha, b.boxId, sanitizeRut(b.doctor_rut), b.inicio, b.fin)
+  // Agregar horas extra reservadas como ocupadas
+  for (const e of extraHoursAll) {
+    const reservadoPor = sanitizeRut(e.doctor_rut || e.reserved_by || "")
+    addBusy(e.fecha, e.boxId, reservadoPor, e.inicio, e.fin)
+  }
 
   const items: any[] = []
+
+  // Cache de boxes por especialidad para validación rápida
+  const boxesCache = await db.collection("boxes").find().toArray()
+  const boxBySpecialty = new Map<string, Set<number>>()
+  for (const box of boxesCache) {
+    const boxSpec = box.especialidad || box.specialty
+    if (boxSpec) {
+      const boxId = box.id ?? box.boxId ?? box.code
+      if (boxId) {
+        const set = boxBySpecialty.get(boxSpec) ?? new Set()
+        set.add(Number(boxId))
+        boxBySpecialty.set(boxSpec, set)
+      }
+    }
+  }
 
   const considerSlot = (slot: any, day: string) => {
     const slotDoctor = sanitizeRut(slot.doctor_rut || "")
@@ -96,6 +120,12 @@ export async function GET(req: NextRequest) {
     if (includeAll && specialty) {
       const doc = doctorByRut.get(slotDoctor)
       if (doc && doc.especialidad && doc.especialidad !== specialty) return
+      // Validar compatibilidad del box con la especialidad
+      const slotBoxId = slot.box ?? slot.boxId
+      if (slotBoxId && specialty) {
+        const compatibleBoxIds = boxBySpecialty.get(specialty) ?? new Set()
+        if (compatibleBoxIds.size > 0 && !compatibleBoxIds.has(Number(slotBoxId))) return
+      }
     }
     const base: [number, number] = [toMinutes(slot.inicio), toMinutes(slot.fin)]
     const key = `${day}|${slot.box ?? slot.boxId ?? "n/a"}|${slotDoctor || "na"}`
@@ -127,12 +157,29 @@ export async function GET(req: NextRequest) {
   }
 
   // 2) Bloqueos aprobados compartidos por especialidad para que otros doctores puedan tomarlos como horas extra
+  // Solo se muestran boxes compatibles con la especialidad del médico
   if (shareBlocked && specialty) {
+    const boxes = await db.collection("boxes").find().toArray()
+    const boxBySpecialty = new Map<string, Set<number>>()
+    for (const box of boxes) {
+      const boxSpec = box.especialidad || box.specialty
+      if (boxSpec) {
+        const boxId = box.id ?? box.boxId ?? box.code
+        if (boxId) {
+          const set = boxBySpecialty.get(boxSpec) ?? new Set()
+          set.add(Number(boxId))
+          boxBySpecialty.set(boxSpec, set)
+        }
+      }
+    }
+    const compatibleBoxIds = boxBySpecialty.get(specialty) ?? new Set()
     for (const b of blocksAll) {
       if (b.estado !== "aprobado") continue
       const owner = doctorByRut.get(sanitizeRut(b.doctor_rut))
       const ownerSpec = owner?.especialidad
       if (ownerSpec && ownerSpec !== specialty) continue
+      // Verificar compatibilidad del box con la especialidad
+      if (b.boxId && compatibleBoxIds.size > 0 && !compatibleBoxIds.has(Number(b.boxId))) continue
       items.push({
         fecha: b.fecha,
         inicio: b.inicio,

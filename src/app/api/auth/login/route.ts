@@ -46,7 +46,7 @@ const rutFilter = (rutSan: string, rawRut: string) => {
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const parsed = schema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ message: "Payload invalido" }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ message: "Payload inválido" }, { status: 400 })
   const rutSan = sanitizeRut(parsed.data.rut)
   const password = parsed.data.password
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const db = await getDb()
     const doctor = await db.collection("doctors").findOne(rutFilter(rutSan, rawRut))
     if (doctor) {
-      if (password !== generic) return NextResponse.json({ message: "Contrasena incorrecta" }, { status: 401 })
+      if (password !== generic) return NextResponse.json({ message: "Contraseña incorrecta" }, { status: 401 })
       // upsert en users para futuras autenticaciones unificadas
       await db.collection("users").updateOne({ rut: rutSan }, { $set: { rut: rutSan, role: "doctor", name: doctor.nombre ?? "" } }, { upsert: true })
       const res = NextResponse.json({ role: "doctor" })
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     const user = await db.collection("users").findOne(rutFilter(rutSan, rawRut))
     if (user) {
       if (password !== generic && user.password && user.password !== password) {
-        return NextResponse.json({ message: "Contrasena incorrecta" }, { status: 401 })
+        return NextResponse.json({ message: "Contraseña incorrecta" }, { status: 401 })
       }
       const role = user.role ?? "agendamiento"
       const res = NextResponse.json({ role })

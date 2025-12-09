@@ -21,6 +21,7 @@ type Box = { id: number; piso: number; especialidad: string; estado: "disponible
 type Ticket = { id: string; tipo: "bloqueo" | "sistema"; detalle: string; estado: "abierto" | "cerrado"; creadoPor: string }
 type BlockRq = { id: string; rut: string; fecha: string; inicio: string; fin: string; motivo: string; boxId?: number; estado: "pendiente" | "aprobado" | "rechazado"; doctorNombre?: string; especialidad?: string; createdAt?: string }
 type Extra = { id: string; fecha: string; inicio: string; fin: string; boxId?: number | null; especialidad?: string | null; audience?: string | null }
+type SpecialRq = { id: string; doctor_rut: string; doctorNombre?: string; especialidad?: string; tipo: string; detalle: string; estado: "pendiente" | "aprobado" | "rechazado"; fecha_solicitada?: string | null; horario_actual?: string | null; horario_solicitado?: string | null; boxId?: number | null; createdAt?: string; respuesta?: string | null }
 
 function TablaBoxes() {
   const [estado, setEstado] = useState("")
@@ -55,7 +56,7 @@ function TablaBoxes() {
         </Button>
       </div>
       {isLoading && <p className="text-sm text-muted-foreground">Cargando datos de boxes...</p>}
-      {isError && <p className="text-sm text-destructive">Ocurrio un problema al cargar los boxes.</p>}
+      {isError && <p className="text-sm text-destructive">Ocurrió un problema al cargar los boxes.</p>}
       {!isLoading && !isError && <DataTable columns={columns} data={data} />}
     </div>
   )
@@ -203,21 +204,21 @@ function ObservacionRapida() {
       fetch("/api/tickets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo: "bloqueo", detalle: `[Observacion agendamiento] ${detalle}` }),
+        body: JSON.stringify({ tipo: "bloqueo", detalle: `[Observación agendamiento] ${detalle}` }),
       }).then((r) => {
-        if (!r.ok) throw new Error("No se pudo enviar la observacion")
+        if (!r.ok) throw new Error("No se pudo enviar la observación")
         return r.json()
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tickets"] })
-      toast.success("Observacion enviada")
+      toast.success("Observación enviada")
     },
   })
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Ventana de observacion</CardTitle>
+        <CardTitle className="text-lg">Ventana de observación</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-secondary/70">Envía solicitudes cuando no hay disponibilidad. Se alinea con el flujo de bloqueos y el panel del doctor.</p>
@@ -249,7 +250,7 @@ function ObservacionRapida() {
             if (el) el.value = ""
           }}
         >
-          Enviar observacion
+          Enviar observación
         </Button>
       </CardContent>
     </Card>
@@ -324,6 +325,109 @@ function SolicitudesBloqueo() {
   )
 }
 
+function SolicitudesEspeciales() {
+  const qc = useQueryClient()
+  const [respuesta, setRespuesta] = useState<Record<string, string>>({})
+  const { data: items = [], isLoading, isError } = useQuery<SpecialRq[]>({
+    queryKey: ["agendamiento-special-requests"],
+    queryFn: () => fetch("/api/agendamiento/special-requests").then((r) => r.json().then((d) => d.items ?? [])),
+    refetchInterval: 10000,
+  })
+
+  const updateEstado = useMutation({
+    mutationFn: (payload: { id: string; estado: "aprobado" | "rechazado"; respuesta?: string }) =>
+      fetch("/api/doctor/special-requests", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).then((r) => {
+        if (!r.ok) throw new Error("No se pudo actualizar")
+        return r.json()
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agendamiento-special-requests"] })
+      qc.invalidateQueries({ queryKey: ["doctor-special-requests"] })
+      toast.success("Solicitud actualizada")
+      setRespuesta({})
+    },
+    onError: () => toast.error("Error al actualizar"),
+  })
+
+  const estadoBadge = (estado: SpecialRq["estado"]) => {
+    if (estado === "aprobado") return <Badge className="bg-emerald-100 text-emerald-800">Aprobado</Badge>
+    if (estado === "rechazado") return <Badge className="bg-rose-100 text-rose-800">Rechazado</Badge>
+    return <Badge className="bg-amber-100 text-amber-800">Pendiente</Badge>
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Solicitudes especiales de reajuste de horario</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading && <p className="text-sm text-muted-foreground">Cargando solicitudes...</p>}
+        {isError && <p className="text-sm text-destructive">No pudimos cargar las solicitudes.</p>}
+        {!isLoading && !isError && (
+          <div className="space-y-3">
+            {items.map((req) => (
+              <div key={req.id} className="flex flex-col gap-3 rounded-xl border border-border/60 bg-white px-4 py-3 text-sm shadow-sm">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-secondary">{req.doctorNombre || "Doctor"}</span>
+                    <span className="text-xs text-secondary/70">{req.especialidad}</span>
+                    <span className="text-xs text-secondary/70">({req.tipo.replace(/_/g, " ")})</span>
+                    {estadoBadge(req.estado)}
+                  </div>
+                </div>
+                <p className="text-secondary/80">{req.detalle}</p>
+                {req.fecha_solicitada && <p className="text-xs text-secondary/70">Fecha solicitada: {req.fecha_solicitada}</p>}
+                {req.horario_actual && <p className="text-xs text-secondary/70">Horario actual: {req.horario_actual}</p>}
+                {req.horario_solicitado && <p className="text-xs text-secondary/70">Horario solicitado: {req.horario_solicitado}</p>}
+                {req.respuesta && (
+                  <div className="rounded-lg border border-border/60 bg-secondary/5 px-3 py-2 text-xs">
+                    <span className="font-semibold text-secondary/70">Respuesta:</span>
+                    <p className="mt-1 text-secondary/80">{req.respuesta}</p>
+                  </div>
+                )}
+                {req.estado === "pendiente" && (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder="Agregar respuesta o comentario (opcional)"
+                      value={respuesta[req.id] || ""}
+                      onChange={(e) => setRespuesta({ ...respuesta, [req.id]: e.target.value })}
+                      rows={2}
+                      className="resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={updateEstado.isPending}
+                        onClick={() => updateEstado.mutate({ id: req.id, estado: "rechazado", respuesta: respuesta[req.id] || undefined })}
+                      >
+                        Rechazar
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={updateEstado.isPending}
+                        onClick={() => updateEstado.mutate({ id: req.id, estado: "aprobado", respuesta: respuesta[req.id] || undefined })}
+                      >
+                        Aprobar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="text-[11px] text-secondary/60">RUT {req.doctor_rut} · Creado {req.createdAt ? new Date(req.createdAt).toLocaleString() : ""}</div>
+              </div>
+            ))}
+            {items.length === 0 && <p className="text-sm text-muted-foreground">Sin solicitudes especiales registradas.</p>}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function Page() {
   const { data: solicitudes = [] } = useQuery<BlockRq[]>({
     queryKey: ["agendamiento-block-requests-mini"],
@@ -355,7 +459,7 @@ export default function Page() {
             <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-secondary/60">Agendamiento</span>
             <h1 className="text-3xl font-semibold text-secondary">Control integral de boxes</h1>
             <p className="text-sm text-muted-foreground">
-              Optimiza la ocupacion y gestiona solicitudes en tiempo real para toda la red RedSalud, alineada con el panel del doctor.
+              Optimiza la ocupación y gestiona solicitudes en tiempo real para toda la red RedSalud, alineada con el panel del doctor.
             </p>
           </div>
         </section>
@@ -395,7 +499,7 @@ export default function Page() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-secondary">Radar de disponibilidad</h2>
-                <p className="text-sm text-secondary/70">Todo se gestiona via solicitudes. Visualiza bloqueados, libres y liberados para el día.</p>
+                <p className="text-sm text-secondary/70">Todo se gestiona vía solicitudes. Visualiza bloqueados, libres y liberados para el día.</p>
               </div>
               <Input type="date" value={fechaCursor} onChange={(e) => setFechaCursor(e.target.value)} className="w-[180px]" />
             </div>
@@ -408,7 +512,7 @@ export default function Page() {
                   <p className="text-3xl font-semibold text-emerald-700">
                     {boxes.data && bloqueosDelDia.data ? boxes.data.filter((b) => !(bloqueosDelDia.data ?? []).some((bk) => bk.boxId === b.id && bk.estado !== "rechazado")).length : "..."}
                   </p>
-                  <p className="text-xs text-secondary/70">Disponible para asignar via solicitud</p>
+                  <p className="text-xs text-secondary/70">Disponible para asignar vía solicitud</p>
                 </CardContent>
               </Card>
               <Card>
@@ -488,12 +592,17 @@ export default function Page() {
           </section>
 
           <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
-            <h2 className="text-lg font-semibold text-secondary mb-3">Alineacion con medicos</h2>
+            <h2 className="text-lg font-semibold text-secondary mb-3">Alineación con médicos</h2>
             <p className="text-sm text-secondary/70 mb-3">Historial y observaciones sincronizadas con el panel del doctor.</p>
             <div className="grid gap-4 md:grid-cols-2">
               <ObservacionRapida />
               <SolicitudesBloqueo />
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Solicitudes especiales de reajuste</h2>
+            <SolicitudesEspeciales />
           </section>
         </div>
       </div>

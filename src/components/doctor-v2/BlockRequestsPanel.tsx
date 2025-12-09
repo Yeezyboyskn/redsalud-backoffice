@@ -206,6 +206,25 @@ export default function BlockRequestsPanel() {
     return m
   }, [baseSlotsByDate])
 
+  // Horario semanal fijo del médico agrupado por día de la semana
+  const weeklySchedule = useMemo(() => {
+    const slots = weekly.data?.items ?? []
+    const scheduleByDay = new Map<number, WeeklySlot[]>()
+    for (const slot of slots) {
+      const dow = normalizeDiaSemana(slot.dia_semana)
+      if (dow) {
+        const arr = scheduleByDay.get(dow) ?? []
+        arr.push(slot)
+        scheduleByDay.set(dow, arr)
+      }
+    }
+    // Ordenar por día de la semana y luego por hora de inicio
+    for (const arr of scheduleByDay.values()) {
+      arr.sort((a, b) => a.inicio.localeCompare(b.inicio))
+    }
+    return scheduleByDay
+  }, [weekly.data])
+
   const monthLabel = fmtMesAnio.format(monthCursor)
 
   const selectionDays = useMemo(() => {
@@ -247,7 +266,7 @@ export default function BlockRequestsPanel() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["block-requests"] })
-      setFeedback("Bloqueo confirmado y enviado a validacion.")
+      setFeedback("Bloqueo confirmado y enviado a validación.")
       setShowConfirm(false)
       setConfirmPayloads(null)
       setRangeStart(null)
@@ -277,7 +296,7 @@ export default function BlockRequestsPanel() {
     : "Sin fechas seleccionadas"
 
   const summaryHours = () => {
-    if (allDay) return "Todo el dÃ­a"
+    if (allDay) return "Todo el día"
     return `${horaInicio} a ${horaFin}`
   }
 
@@ -348,13 +367,13 @@ export default function BlockRequestsPanel() {
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/70">Flujo rápido</p>
           <h2 className="text-2xl font-semibold text-secondary">Bloqueos operativos</h2>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Selecciona rango de fechas, define horas o marca todo el dÃ­a, y confirma en un solo paso. Ideal para urgencias, congresos o vacaciones.
+            Selecciona rango de fechas, define horas o marca todo el día, y confirma en un solo paso. Ideal para urgencias, congresos o vacaciones.
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-secondary">
           <CalendarDays className="size-5" />
           <div className="leading-tight">
-            <p className="font-semibold">Seleccion por rango</p>
+            <p className="font-semibold">Selección por rango</p>
             <p className="text-xs text-secondary/70">Clic en fecha inicio y fecha fin, el panel se adapta.</p>
           </div>
         </div>
@@ -368,14 +387,15 @@ export default function BlockRequestsPanel() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
-        <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-sky-50 via-white to-transparent" />
-          <CardHeader className="relative z-10">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <CardTitle className="text-lg">Calendario inteligente</CardTitle>
-                <CardDescription>Selecciona rango, visualiza bloqueos existentes y tu agenda base.</CardDescription>
-              </div>
+        <div className="space-y-4">
+          <Card className="relative overflow-hidden">
+            <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-sky-50 via-white to-transparent" />
+            <CardHeader className="relative z-10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">Calendario inteligente</CardTitle>
+                  <CardDescription>Selecciona rango, visualiza bloqueos existentes y tu agenda base.</CardDescription>
+                </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}>
                   Anterior
@@ -430,7 +450,7 @@ export default function BlockRequestsPanel() {
                             agendaCount > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border/50 bg-secondary/5 text-secondary/60"
                           )}
                         >
-                          {agendaCount > 0 ? `${agendaCount} tramo${agendaCount === 1 ? "" : "s"} agenda` : "Sin agenda"}
+                          {agendaCount > 0 ? `${agendaCount} tramo${agendaCount === 1 ? "" : "s"} de agenda` : "Sin agenda"}
                         </div>
                         <div
                           className={cn(
@@ -463,6 +483,52 @@ export default function BlockRequestsPanel() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Horario fijo semanal</CardTitle>
+            <CardDescription className="text-sm text-secondary/80">Tu horario de trabajo base según la base de datos</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {weeklySchedule.size > 0 ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5, 6, 7].map((dow) => {
+                  const slots = weeklySchedule.get(dow) ?? []
+                  if (slots.length === 0) return null
+                  const dayName = weekDays[dow === 7 ? 0 : dow - 1]
+                  return (
+                    <div key={dow} className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-sm">
+                      <div className="font-semibold text-emerald-900 mb-1">{dayName}</div>
+                      <div className="space-y-1">
+                        {slots.map((slot, idx) => {
+                          const boxId = normalizeBoxId(slot.box ?? slot.boxId)
+                          const piso = typeof slot.piso === "number" ? slot.piso : null
+                          return (
+                            <div key={idx} className="flex items-center justify-between text-xs text-emerald-800">
+                              <span className="font-medium">
+                                {slot.inicio} - {slot.fin}
+                              </span>
+                              <span className="text-emerald-700">
+                                {boxId ? `Box ${boxId}` : "Sin box"}
+                                {piso !== null ? ` (Piso ${piso})` : ""}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border/60 px-3 py-4 text-center text-sm text-muted-foreground">
+                <p className="font-semibold mb-1">No hay horario fijo registrado</p>
+                <p className="text-xs">Contacta a agendamiento para configurar tu horario semanal base.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        </div>
+
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
@@ -474,7 +540,7 @@ export default function BlockRequestsPanel() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-secondary">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Tramo seleccionado</p>
                   <p className="font-semibold">
-                    {fmtDia.format(new Date(`${selectedSlot.fecha}T00:00:00`))} Â· {selectedSlot.inicio} - {selectedSlot.fin}
+                    {fmtDia.format(new Date(`${selectedSlot.fecha}T00:00:00`))} · {selectedSlot.inicio} - {selectedSlot.fin}
                   </p>
                   <p className="text-xs text-secondary/70">
                     {selectedSlot.boxId ? `Box ${selectedSlot.boxId}` : "Box sin asignar"}{selectedSlot.piso !== null && selectedSlot.piso !== undefined ? ` - Piso ${selectedSlot.piso}` : ""}
@@ -484,7 +550,7 @@ export default function BlockRequestsPanel() {
                 <div className="grid gap-4">
                   {estadoDelDia && (
                     <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/5 px-3 py-2 text-sm">
-                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary/70">Estado solicitudes de este dÃ­a</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary/70">Estado solicitudes de este día</span>
                       <span
                         className={cn(
                           "rounded-full px-3 py-1 text-[11px] font-semibold",
@@ -503,7 +569,7 @@ export default function BlockRequestsPanel() {
                   )}
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-secondary/5 px-3 py-2">
                     <div>
-                    <p className="text-sm font-semibold text-secondary">Todo el dÃ­a</p>
+                    <p className="text-sm font-semibold text-secondary">Todo el día</p>
                       <p className="text-xs text-secondary/70">Ideal para vacaciones o licencias.</p>
                     </div>
                   <label className="flex items-center gap-2 text-sm font-semibold text-secondary">
@@ -558,7 +624,7 @@ export default function BlockRequestsPanel() {
                     <Repeat2 className="size-4 text-secondary/80" />
                     <div>
                       <p className="text-sm font-semibold text-secondary">Repetir bloqueo</p>
-                      <p className="text-xs text-secondary/70">Repite mismo dÃ­a de la semana por varias semanas.</p>
+                      <p className="text-xs text-secondary/70">Repite mismo día de la semana por varias semanas.</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -582,7 +648,7 @@ export default function BlockRequestsPanel() {
                   <TriangleAlert className="mt-0.5 size-4" />
                   <div>
                     <p className="font-semibold">Tienes {conflictCount} pacientes agendados en este horario.</p>
-                    <p className="text-xs text-amber-800">Deseas bloquear y solicitar reprogramacion?</p>
+                    <p className="text-xs text-amber-800">¿Deseas bloquear y solicitar reprogramación?</p>
                   </div>
                 </div>
               )}
@@ -590,7 +656,7 @@ export default function BlockRequestsPanel() {
               <div className="rounded-2xl border border-border/60 bg-secondary/5 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary/70">Resumen</p>
                 <p className="text-sm text-secondary">
-                  Vas a bloquear {selectionDays.length} dÃ­a{selectionDays.length === 1 ? "" : "s"} ({summaryHours()}) por {motivoOptions.find((m) => m.value === motivo)?.label ?? motivo}.
+                  Vas a bloquear {selectionDays.length} día{selectionDays.length === 1 ? "" : "s"} ({summaryHours()}) por {motivoOptions.find((m) => m.value === motivo)?.label ?? motivo}.
                 </p>
               </div>
 
@@ -601,7 +667,7 @@ export default function BlockRequestsPanel() {
                 onClick={() => {
                   if (!rangeStart) return
                   if (!allDay && horaFin <= horaInicio) {
-                    alert("Hora fin debe ser mayor a hora inicio")
+                    alert("La hora fin debe ser mayor que la hora inicio")
                     return
                   }
                   const payloads = buildPayloads()
@@ -617,8 +683,8 @@ export default function BlockRequestsPanel() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Sabanilla del dÃ­a</CardTitle>
-              <CardDescription className="text-sm text-secondary/80">Tramos base segun tu horario semanal.</CardDescription>
+              <CardTitle className="text-lg">Agenda del día</CardTitle>
+              <CardDescription className="text-sm text-secondary/80">Tramos base según tu horario semanal.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-xs text-secondary/70">{selectedRangeLabel}</div>
@@ -652,7 +718,7 @@ export default function BlockRequestsPanel() {
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground">
-                  No hay tramos programados para el dia seleccionado.
+                  No hay tramos programados para el día seleccionado.
                 </div>
               )}
 
@@ -665,7 +731,7 @@ export default function BlockRequestsPanel() {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-1 text-xs text-secondary/70">Sin boxes libres segun la agenda del dia.</p>
+                  <p className="mt-1 text-xs text-secondary/70">Sin boxes libres según la agenda del día.</p>
                 )}
               </div>
             </CardContent>
@@ -674,7 +740,7 @@ export default function BlockRequestsPanel() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Bloqueos existentes</CardTitle>
-              <CardDescription className="text-sm text-secondary/70">Visual rapido del mes</CardDescription>
+              <CardDescription className="text-sm text-secondary/70">Vista rápida del mes</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {itemsBase.filter((b) => b.fecha >= toISODate(startOfMonth(monthCursor)) && b.fecha <= toISODate(endOfMonth(monthCursor))).slice(0, 6).map((b) => (
@@ -711,19 +777,19 @@ export default function BlockRequestsPanel() {
             <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-secondary/5 px-4 py-3 text-sm text-secondary">
               <div className="flex items-center justify-between">
                 <span>Horario</span>
-                <span className="font-semibold">{allDay ? "Todo el dÃ­a" : `${horaInicio} - ${horaFin}`}</span>
+                <span className="font-semibold">{allDay ? "Todo el día" : `${horaInicio} - ${horaFin}`}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Motivo</span>
                 <span className="font-semibold">{motivoOptions.find((m) => m.value === motivo)?.label ?? motivo}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>DÃ­as a bloquear</span>
+                <span>Días a bloquear</span>
                 <span className="font-semibold">{confirmPayloads.length}</span>
               </div>
               {repeat && (
                 <div className="flex items-center justify-between">
-                  <span>Repeticion</span>
+                  <span>Repetición</span>
                   <span className="font-semibold">Cada semana por {repeatCount} semanas</span>
                 </div>
               )}
@@ -740,7 +806,7 @@ export default function BlockRequestsPanel() {
                 <TriangleAlert className="mt-0.5 size-4" />
                 <div>
                   <p className="font-semibold">Tienes {conflictCount} pacientes agendados en este rango.</p>
-                  <p className="text-xs text-amber-800">Deseas bloquear y solicitar reprogramacion?</p>
+                  <p className="text-xs text-amber-800">¿Deseas bloquear y solicitar reprogramación?</p>
                 </div>
               </div>
             )}

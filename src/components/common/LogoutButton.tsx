@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 export default function LogoutButton(){
   return (
     <Button
-      aria-label="Cerrar sesion"
+      aria-label="Cerrar sesión"
       variant="ghost"
       size="sm"
       className="bg-white/10 text-primary-foreground hover:bg-white/20 hover:text-primary-foreground"
@@ -14,7 +14,7 @@ export default function LogoutButton(){
         window.location.href = "/login"
       }}
     >
-      Cerrar sesion
+      Cerrar sesión
     </Button>
   )
 }

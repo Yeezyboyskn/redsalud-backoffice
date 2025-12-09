@@ -5,6 +5,7 @@ import DoctorProfileCard from "@/components/doctor-v2/DoctorProfileCard"
 import ExtraHoursPanel from "@/components/doctor-v2/ExtraHoursPanel"
 import BlockRequestsPanel from "@/components/doctor-v2/BlockRequestsPanel"
 import PendingRequests from "@/components/doctor-v2/PendingRequests"
+import SpecialRequestsPanel from "@/components/doctor-v2/SpecialRequestsPanel"
 
 function getCookie(name: string) {
   if (typeof document === "undefined") return ""
@@ -37,6 +38,7 @@ export default function DoctorV2Page() {
         <PendingRequests />
         <ExtraHoursPanel />
         <BlockRequestsPanel />
+        <SpecialRequestsPanel />
       </div>
     </AppShell>
   )

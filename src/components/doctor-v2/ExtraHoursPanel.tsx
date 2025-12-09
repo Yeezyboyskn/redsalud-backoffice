@@ -324,8 +324,8 @@ export default function ExtraHoursPanel() {
             <Filter className="size-4" />
             <select className="rounded-md border border-border/60 bg-white px-2 py-1 text-xs" value={filters.box} onChange={(e) => setFilters((f) => ({ ...f, box: e.target.value }))}>
               <option value="all">Todos los boxes</option>
-              {[...new Set(filteredItems.map((i) => i.boxId).filter(Boolean))].map((b) => (
-                <option key={String(b)} value={String(b)}>{`Box ${b}`}</option>
+              {[...new Set(filteredItems.map((i) => Number(i.boxId)).filter((b) => Number.isFinite(b) && b > 0))].sort((a, b) => a - b).map((b, idx) => (
+                <option key={`box-${b}-${idx}`} value={String(b)}>{`Box ${b}`}</option>
               ))}
             </select>
             <select className="rounded-md border border-border/60 bg-white px-2 py-1 text-xs" value={filters.tipo} onChange={(e) => setFilters((f) => ({ ...f, tipo: e.target.value as any }))}>
@@ -515,7 +515,7 @@ export default function ExtraHoursPanel() {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-secondary/70">Próximas</p>
                 <div className="space-y-2">
                   {history.future.slice(0, 4).map((h) => (
-                    <div key={`${h.fecha}-${h.inicio}`} className="flex justify-between rounded-lg border border-border/60 bg-secondary/5 px-3 py-2">
+                    <div key={h.id} className="flex justify-between rounded-lg border border-border/60 bg-secondary/5 px-3 py-2">
                       <span>{fmtDia.format(parseISODate(h.fecha)!)}</span>
                       <span className="text-xs text-secondary/70">{h.inicio}-{h.fin} · Box {h.boxId ?? ""}</span>
                     </div>
@@ -527,7 +527,7 @@ export default function ExtraHoursPanel() {
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-secondary/70">Pasadas</p>
                 <div className="space-y-2">
                   {history.past.slice(-4).map((h) => (
-                    <div key={`${h.fecha}-${h.inicio}`} className="flex justify-between rounded-lg border border-border/60 bg-secondary/5 px-3 py-2">
+                    <div key={h.id} className="flex justify-between rounded-lg border border-border/60 bg-secondary/5 px-3 py-2">
                       <span>{fmtDia.format(parseISODate(h.fecha)!)}</span>
                       <span className="text-xs text-secondary/70">{h.inicio}-{h.fin} · Box {h.boxId ?? ""}</span>
                     </div>
@@ -545,7 +545,7 @@ export default function ExtraHoursPanel() {
           <div className="w-full max-w-lg rounded-2xl border border-border/70 bg-white p-6 shadow-2xl">
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/70">Confirmación</p>
-              <h3 className="text-xl font-semibold text-secondary">Seguro que quieres reservar estos bloques?</h3>
+              <h3 className="text-xl font-semibold text-secondary">¿Seguro que quieres reservar estos bloques?</h3>
               <p className="text-sm text-muted-foreground">Validaremos los bloques seleccionados y los marcaremos como reservados.</p>
             </div>
 

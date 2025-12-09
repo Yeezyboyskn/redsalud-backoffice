@@ -10,6 +10,10 @@ export function getSession(req: NextRequest): Session {
 
 export function requireRole(req: NextRequest, roles: Session["role"][]): Session {
   const session = getSession(req)
+  // Admin tiene acceso a todo
+  if (session.role === "admin") {
+    return session
+  }
   if (!session.rut || !session.role || !roles.includes(session.role)) {
     throw NextResponse.json({ message: "No autorizado" }, { status: 401 })
   }

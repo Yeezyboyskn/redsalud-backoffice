@@ -1,16 +1,37 @@
 ﻿"use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
 
-const items = [
+function getCookie(name: string) {
+  if (typeof document === "undefined") return ""
+  const m = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"))
+  return m ? decodeURIComponent(m[2]) : ""
+}
+
+const allItems = [
   { href: "/doctor", label: "Doctor" },
   { href: "/agendamiento", label: "Agendamiento" },
   { href: "/jefatura", label: "Jefatura" },
-  { href: "/admin", label: "Admin" },
+  { href: "/admin", label: "Admin", adminOnly: true },
 ]
 
 export default function Sidebar() {
   const path = usePathname()
+  const [role, setRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    setRole(getCookie("role") || null)
+  }, [])
+
+  // Filtrar items según el rol del usuario
+  const items = allItems.filter((item) => {
+    if (item.adminOnly) {
+      return role === "admin"
+    }
+    return true
+  })
+
   return (
     <aside className="hidden md:flex w-64 min-h-dvh bg-gradient-to-b from-sidebar via-white to-[#eef7f7] border-r border-sidebar-border/70 shadow-[8px_0_24px_-12px_rgba(0,78,82,0.25)] sticky top-0">
       <div className="flex flex-1 flex-col">
@@ -51,7 +72,7 @@ export default function Sidebar() {
         <div className="px-5 pb-6 text-xs text-muted-foreground/80">
           <p className="font-semibold uppercase tracking-wide text-secondary/80">Comprometidos con las personas</p>
           <p className="mt-1 leading-relaxed text-muted-foreground">
-            Gestion agil y humana para apoyar a cada centro de RedSalud.
+            Gestión ágil y humana para apoyar a cada centro de RedSalud.
           </p>
         </div>
       </div>

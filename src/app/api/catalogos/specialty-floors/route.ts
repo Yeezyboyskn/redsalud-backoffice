@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDb } from "@/lib/mongodb"
+import { requireRole } from "@/lib/auth"
 
 function normalizeEspecialidad(v?: string | null) {
   return (v || "").toString().trim()
@@ -30,6 +31,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    requireRole(req, ["admin"])
+  } catch (res) {
+    return res as NextResponse
+  }
   const db = await getDb()
   const body = await req.json().catch(() => ({}))
   const especialidad = normalizeEspecialidad(body.especialidad)
@@ -45,6 +51,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  try {
+    requireRole(req, ["admin"])
+  } catch (res) {
+    return res as NextResponse
+  }
   const db = await getDb()
   const url = new URL(req.url)
   const esp = normalizeEspecialidad(url.searchParams.get("especialidad"))
