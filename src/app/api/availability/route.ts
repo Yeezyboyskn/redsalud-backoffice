@@ -39,13 +39,42 @@ export async function GET(req: NextRequest) {
 
   const weeklyFilter: any = {}
   if (!includeAll && doctorRut) weeklyFilter.doctor_rut = doctorRut
-  const weekly = await db.collection("weekly_slots_import").find(weeklyFilter).toArray()
+  let weekly = await db.collection("weekly_slots_import").find(weeklyFilter).toArray()
 
   const blocksFilter: any = { fecha: { $gte: from, $lte: to }, estado: { $in: ["pendiente", "aprobado"] } }
   const blocksAll = await db.collection("block_requests").find(blocksFilter).toArray()
 
   const opsFilter: any = { fecha: { $gte: from, $lte: to } }
   const opsAll = await db.collection("operational_blocks").find(opsFilter).toArray()
+
+  // Si no hay slots semanales cargados, generamos slots sintéticos para todos los boxes (horario base 09-13 y 14-18 lun-vie)
+  if (weekly.length === 0) {
+    const boxes = await db.collection("boxes").find().toArray()
+    const synthetic: any[] = []
+    for (let dow = 1; dow <= 5; dow++) {
+      for (const box of boxes) {
+        synthetic.push({
+          doctor_rut: "",
+          dia_semana: dow,
+          inicio: "09:00",
+          fin: "13:00",
+          boxId: box.code ?? box.boxId ?? box.id ?? null,
+          piso: box.floor ?? box.piso ?? null,
+          especialidad: box.especialidad ?? null,
+        })
+        synthetic.push({
+          doctor_rut: "",
+          dia_semana: dow,
+          inicio: "14:00",
+          fin: "18:00",
+          boxId: box.code ?? box.boxId ?? box.id ?? null,
+          piso: box.floor ?? box.piso ?? null,
+          especialidad: box.especialidad ?? null,
+        })
+      }
+    }
+    weekly = synthetic
+  }
 
   // Map busy by date+box+doctor
   const busyByKey = new Map<string, { start: number; end: number }[]>()
