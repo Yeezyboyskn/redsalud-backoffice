@@ -369,7 +369,7 @@ export default function BlockRequestsPanel() {
 
       <div className="grid gap-6 lg:grid-cols-[1.35fr_1fr]">
         <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-50 via-white to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-sky-50 via-white to-transparent" />
           <CardHeader className="relative z-10">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

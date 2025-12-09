@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils"
 
 type DoctorProfile = { nombre: string; rut: string; especialidad?: string | null }
-type ExtraHour = { id: string; fecha: string; inicio: string; fin: string; boxId?: number; audience?: string | null; especialidad?: string | null; ownerRut?: string | null }
+type ExtraHour = { id: string; fecha: string; inicio: string; fin: string; boxId?: number; audience?: string | null; especialidad?: string | null; ownerRut?: string | null; piso?: number | null }
 type AvailabilityItem = { fecha: string; inicio: string; fin: string; boxId?: number | null; piso?: number | null; especialidad?: string | null }
 type ListResponse = { items: ExtraHour[] }
 type WeeklyItem = { dia_semana: number; inicio: string; fin: string; box?: number | null; frecuencia_min?: number | null; piso?: number | null }
@@ -102,6 +102,7 @@ export default function ExtraHoursPanel() {
         fin: a.fin,
         boxId: a.boxId ?? undefined,
         especialidad: a.especialidad ?? undefined,
+        piso: a.piso ?? null,
         audience: "especialidad",
       }))
     }
@@ -340,7 +341,7 @@ export default function ExtraHoursPanel() {
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_0.8fr]">
         <Card className="relative overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-transparent" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-br from-emerald-50 via-white to-transparent" />
           <CardHeader className="relative z-10">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

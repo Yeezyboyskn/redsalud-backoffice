@@ -50,9 +50,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-dvh bg-gradient-to-br from-[#f1faf9] via-[#f7fcfc] to-[#e1f4f4] lg:grid-cols-[1.1fr_1fr]">
+    <div className="grid min-h-dvh bg-linear-to-br from-[#f1faf9] via-[#f7fcfc] to-[#e1f4f4] lg:grid-cols-[1.1fr_1fr]">
       <div className="relative hidden overflow-hidden lg:flex lg:items-center lg:justify-center">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary via-[#00b7ae] to-[#009389]" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary via-[#00b7ae] to-[#009389]" />
         <div className="absolute -left-36 top-12 h-72 w-72 rounded-full bg-white/20 blur-2xl" />
         <div className="absolute -right-32 bottom-10 h-64 w-64 rounded-full bg-white/15 blur-3xl" />
         <div className="relative z-10 max-w-md space-y-8 px-12 text-primary-foreground">
