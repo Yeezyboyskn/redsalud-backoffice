@@ -57,6 +57,29 @@ export async function PUT(req: NextRequest) {
   if (!res.value) return NextResponse.json({ message: "no encontrado" }, { status: 404 })
   const d: any = res.value
   await logAudit({ actorRut: req.cookies.get("rut")?.value, action: "change_status", entity: "block_requests", entityId: body.id, details: { estado: body.estado } })
+
+  // Si se aprueba el bloqueo, lo publicamos como hora extra compartida por especialidad para colegas
+  if (body.estado === "aprobado") {
+    const doctor = await db.collection("doctors").findOne({ rut: d.doctor_rut })
+    const especialidad = doctor?.especialidad ?? null
+    // Evita duplicar si ya se publicó este bloque como extra
+    const exists = await db.collection("extra_hours").findOne({ source_block_id: String(d._id) })
+    if (!exists) {
+      await db.collection("extra_hours").insertOne({
+        doctor_rut: d.doctor_rut,
+        owner_rut: d.doctor_rut,
+        especialidad,
+        audience: "especialidad",
+        source_block_id: String(d._id),
+        fecha: d.fecha,
+        inicio: d.inicio,
+        fin: d.fin,
+        boxId: d.boxId ?? null,
+        createdAt: new Date().toISOString(),
+      } as any)
+    }
+  }
+
   try {
   const { sendEmail } = await import("@/lib/mailer")
   await sendEmail({
