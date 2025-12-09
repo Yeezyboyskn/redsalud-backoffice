@@ -307,7 +307,7 @@ export default function BlockRequestsPanel() {
     return [...basePayloads, ...extra]
   }
 
-  const conflictCount = pseudoConflict(rangeStart, rangeEnd ?? rangeStart)
+  const conflictCount = pseudoConflict(rangeStart ?? undefined, (rangeEnd ?? rangeStart) ?? undefined)
 
   const selectedAgendaDate = rangeStart ?? selectionDays[0] ?? null
   const agendaDelDia = useMemo(() => {
