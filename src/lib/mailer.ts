@@ -1,4 +1,4 @@
-type MailPayload = { to?: string; subject: string; html: string; from?: string; replyTo?: string }
+type MailPayload = { to?: string; subject: string; html: string; from?: string; replyTo?: string; text?: string; fromName?: string }
 
 export async function sendEmail(payload: MailPayload) {
   const webhook = process.env.MAIL_WEBHOOK_URL
@@ -11,10 +11,25 @@ export async function sendEmail(payload: MailPayload) {
     if (process.env.MAIL_WEBHOOK_AUTH) {
       headers.Authorization = process.env.MAIL_WEBHOOK_AUTH
     }
+
+    // Adapt payload for Mailtrap if detected (by provider env or URL)
+    const provider = process.env.MAIL_PROVIDER || (webhook.includes("mailtrap.io") ? "mailtrap" : "generic")
+    let body: any = { ...payload, to, from, replyTo: payload.replyTo }
+    if (provider === "mailtrap") {
+      body = {
+        from: { email: from, name: payload.fromName || "Backoffice Boxes" },
+        to: [{ email: to }],
+        subject: payload.subject,
+        text: payload.text || "",
+        html: payload.html,
+        category: "Backoffice Boxes",
+      }
+    }
+
     const res = await fetch(webhook, {
       method: "POST",
       headers,
-      body: JSON.stringify({ ...payload, to, from, replyTo: payload.replyTo }),
+      body: JSON.stringify(body),
     })
     if (!res.ok) return { ok: false, skipped: false, status: res.status }
     return { ok: true }
