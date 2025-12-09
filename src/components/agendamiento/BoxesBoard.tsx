@@ -77,7 +77,7 @@ function Column({ id, title, items, accent }: { id: string; title: string; items
       ref={setNodeRef}
       id={id}
       data-col
-      className={`rounded-2xl border border-border/60 bg-gradient-to-br ${accent} p-4 shadow-inner shadow-primary/5 transition ${
+      className={`rounded-2xl border border-border/60 bg-linear-to-br ${accent} p-4 shadow-inner shadow-primary/5 transition ${
         isOver ? "ring-2 ring-primary/40" : ""
       }`}
     >
