@@ -10,7 +10,7 @@ export default function Topbar() {
           <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-primary-foreground/80">
             RedSalud
           </span>
-          <span className="text-2xl font-semibold">Rematador de box</span>
+          <span className="text-2xl font-semibold">Backoffice de boxes</span>
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />

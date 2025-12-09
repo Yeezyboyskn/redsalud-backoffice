@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getDb } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
+import { requireRole } from "@/lib/auth"
 
 const sanitizeRut = (s?: string | null) => (s ? s.toUpperCase().replace(/[^0-9K]/g, "") : "")
 
@@ -14,23 +15,53 @@ const parseBody = async (req: NextRequest) => {
 }
 
 export async function GET(req: NextRequest) {
+  try {
+    requireRole(req, ["doctor", "agendamiento", "jefatura", "admin"])
+  } catch (res) {
+    return res as NextResponse
+  }
   const db = await getDb()
   const url = new URL(req.url)
   const rutQuery = url.searchParams.get("rut") || req.cookies.get("rut")?.value || ""
   const from = url.searchParams.get("from") || "0000-01-01"
   const to = url.searchParams.get("to") || "9999-12-31"
   const rutSan = sanitizeRut(rutQuery)
-  const items = await db
-    .collection("extra_hours")
-    .find({ doctor_rut: rutSan, fecha: { $gte: from, $lte: to } })
-    .sort({ fecha: 1, inicio: 1 })
-    .toArray()
+  if (!rutSan) return NextResponse.json({ items: [] })
+  const includeSpecialty = url.searchParams.get("includeSpecialty") === "true"
+  let especialidad = url.searchParams.get("especialidad")
+  if (includeSpecialty && !especialidad) {
+    const doctorDocs = await db.collection("doctors").find({ rut: rutSan }).limit(1).toArray()
+    const doctor = doctorDocs[0]
+    especialidad = doctor?.especialidad ?? ""
+  }
+  const or: any[] = [{ doctor_rut: rutSan }]
+  if (includeSpecialty && especialidad) {
+    or.push({ audience: "especialidad", especialidad })
+  }
+  const filter: any = { fecha: { $gte: from, $lte: to } }
+  if (or.length) filter.$or = or
+  const items = await db.collection("extra_hours").find(filter).sort({ fecha: 1, inicio: 1 }).toArray()
   return NextResponse.json({
-    items: items.map((d: any) => ({ id: String(d._id), rut: rutQuery, fecha: d.fecha, inicio: d.inicio, fin: d.fin, boxId: d.boxId })),
+    items: items.map((d: any) => ({
+      id: String(d._id),
+      rut: d.doctor_rut ?? rutQuery,
+      fecha: d.fecha,
+      inicio: d.inicio,
+      fin: d.fin,
+      boxId: d.boxId,
+      audience: d.audience,
+      especialidad: d.especialidad,
+      ownerRut: d.owner_rut,
+    })),
   })
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    requireRole(req, ["doctor"])
+  } catch (res) {
+    return res as NextResponse
+  }
   const db = await getDb()
   const body = await parseBody(req)
   const rutQuery = req.cookies.get("rut")?.value || body.rut || ""
@@ -39,6 +70,9 @@ export async function POST(req: NextRequest) {
   }
   const doc = {
     doctor_rut: sanitizeRut(rutQuery),
+    owner_rut: body.ownerRut ?? sanitizeRut(rutQuery),
+    audience: body.audience ?? null,
+    especialidad: body.especialidad ?? null,
     fecha: body.fecha,
     inicio: body.inicio,
     fin: body.fin,

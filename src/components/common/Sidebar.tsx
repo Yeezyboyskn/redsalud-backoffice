@@ -21,7 +21,7 @@ export default function Sidebar() {
             </span>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.38em] text-primary">RedSalud</p>
-              <p className="text-sm font-semibold text-sidebar-foreground/90">Rematador de box</p>
+              <p className="text-sm font-semibold text-sidebar-foreground/90">Backoffice de boxes</p>
             </div>
           </div>
         </div>
@@ -58,7 +58,6 @@ export default function Sidebar() {
     </aside>
   )
 }
-
 
 
 

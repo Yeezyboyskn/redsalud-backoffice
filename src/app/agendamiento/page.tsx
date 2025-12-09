@@ -11,10 +11,16 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { useState } from "react"
 import { exportCsv } from "@/lib/csv"
-import BoxesBoard from "@/components/agendamiento/BoxesBoard"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Textarea } from "@/components/ui/textarea"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 type Box = { id: number; piso: number; especialidad: string; estado: "disponible" | "bloqueado" }
 type Ticket = { id: string; tipo: "bloqueo" | "sistema"; detalle: string; estado: "abierto" | "cerrado"; creadoPor: string }
+type BlockRq = { id: string; rut: string; fecha: string; inicio: string; fin: string; motivo: string; boxId?: number; estado: "pendiente" | "aprobado" | "rechazado"; doctorNombre?: string; especialidad?: string; createdAt?: string }
+type Extra = { id: string; fecha: string; inicio: string; fin: string; boxId?: number | null; especialidad?: string | null; audience?: string | null }
 
 function TablaBoxes() {
   const [estado, setEstado] = useState("")
@@ -190,7 +196,157 @@ function Tickets() {
   )
 }
 
+function ObservacionRapida() {
+  const qc = useQueryClient()
+  const mut = useMutation({
+    mutationFn: (detalle: string) =>
+      fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "bloqueo", detalle: `[Observacion agendamiento] ${detalle}` }),
+      }).then((r) => {
+        if (!r.ok) throw new Error("No se pudo enviar la observacion")
+        return r.json()
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tickets"] })
+      toast.success("Observacion enviada")
+    },
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Ventana de observacion</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-secondary/70">Envía solicitudes cuando no hay disponibilidad. Se alinea con el flujo de bloqueos y el panel del doctor.</p>
+        <Textarea
+          id="observacion-ag"
+          placeholder="Ej: Solicitar desbloqueo puntual para Dr. Silva el 12/03 de 10:00 a 11:00 o reasignar box a otra especialidad."
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault()
+              const value = (e.currentTarget as HTMLTextAreaElement).value
+              if (!value.trim()) return
+              mut.mutate(value)
+              ;(e.currentTarget as HTMLTextAreaElement).value = ""
+            }
+          }}
+        />
+        <div className="flex items-center gap-2 text-[11px] text-secondary/70">
+          <span>Tip: Ctrl/Cmd + Enter para enviar</span>
+          {mut.isPending && <span className="text-secondary">Enviando...</span>}
+        </div>
+        <Button
+          className="w-full"
+          disabled={mut.isPending}
+          onClick={() => {
+            const el = document.querySelector<HTMLTextAreaElement>("#observacion-ag")
+            const value = el?.value || ""
+            if (!value.trim()) return
+            mut.mutate(value)
+            if (el) el.value = ""
+          }}
+        >
+          Enviar observacion
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+function SolicitudesBloqueo() {
+  const qc = useQueryClient()
+  const { data: items = [], isLoading, isError } = useQuery<BlockRq[]>({
+    queryKey: ["agendamiento-block-requests"],
+    queryFn: () => fetch("/api/agendamiento/block-requests").then((r) => r.json().then((d) => d.items ?? [])),
+    refetchInterval: 10000,
+  })
+
+  const updateEstado = useMutation({
+    mutationFn: (payload: { id: string; estado: "aprobado" | "rechazado" }) =>
+      fetch("/api/agendamiento/block-requests", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }).then((r) => {
+        if (!r.ok) throw new Error("No se pudo actualizar")
+        return r.json()
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["agendamiento-block-requests"] }),
+  })
+
+  const estadoBadge = (estado: BlockRq["estado"]) => {
+    if (estado === "aprobado") return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Aprobado</Badge>
+    if (estado === "rechazado") return <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100">Rechazado</Badge>
+    return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pendiente</Badge>
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Solicitudes de bloqueo y horas extra</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading && <p className="text-sm text-muted-foreground">Cargando solicitudes...</p>}
+        {isError && <p className="text-sm text-destructive">No pudimos cargar las solicitudes.</p>}
+        {!isLoading && !isError && (
+          <div className="space-y-2">
+            {items.map((b) => (
+              <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-white px-4 py-3 text-sm shadow-sm">
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-secondary">{b.doctorNombre || "Doctor"}</span>
+                    <span className="text-xs text-secondary/70">{b.especialidad}</span>
+                    {estadoBadge(b.estado)}
+                  </div>
+                  <div className="text-xs text-secondary/80">
+                    {b.fecha} · {b.inicio} - {b.fin} · {b.motivo} · {b.boxId ? `Box ${b.boxId}` : "Box sin asignar"}
+                  </div>
+                  <div className="text-[11px] text-secondary/60">RUT {b.rut} · Creado {b.createdAt ? new Date(b.createdAt).toLocaleString() : ""}</div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" disabled={b.estado !== "pendiente" || updateEstado.isPending} onClick={() => updateEstado.mutate({ id: b.id, estado: "rechazado" })}>
+                    Rechazar
+                  </Button>
+                  <Button size="sm" disabled={b.estado !== "pendiente" || updateEstado.isPending} onClick={() => updateEstado.mutate({ id: b.id, estado: "aprobado" })}>
+                    Aprobar
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {items.length === 0 && <p className="text-sm text-muted-foreground">Sin solicitudes registradas.</p>}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function Page() {
+  const { data: solicitudes = [] } = useQuery<BlockRq[]>({
+    queryKey: ["agendamiento-block-requests-mini"],
+    queryFn: () => fetch("/api/agendamiento/block-requests").then((r) => r.json().then((d) => d.items ?? [])),
+  })
+  const [fechaCursor, setFechaCursor] = useState<string>(() => format(new Date(), "yyyy-MM-dd"))
+  const boxes = useQuery<Box[]>({
+    queryKey: ["boxes"],
+    queryFn: () => fetch("/api/boxes").then((r) => r.json()),
+  })
+  const bloqueosDelDia = useQuery<BlockRq[]>({
+    queryKey: ["agendamiento-block-requests", fechaCursor],
+    queryFn: () => fetch(`/api/agendamiento/block-requests?fecha=${fechaCursor}`).then((r) => r.json().then((d) => d.items ?? [])),
+  })
+  const extrasDelDia = useQuery<Extra[]>({
+    queryKey: ["extras-dia", fechaCursor],
+    queryFn: () => fetch(`/api/doctor/extra-hours?from=${fechaCursor}&to=${fechaCursor}&includeSpecialty=true`).then((r) => r.json().then((d) => d.items ?? [])),
+  })
+
+  const pendientes = solicitudes.filter((s) => s.estado === "pendiente").length
+  const aprobadas = solicitudes.filter((s) => s.estado === "aprobado").length
+  const rechazadas = solicitudes.filter((s) => s.estado === "rechazado").length
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -199,15 +355,121 @@ export default function Page() {
             <span className="text-[11px] font-semibold uppercase tracking-[0.32em] text-secondary/60">Agendamiento</span>
             <h1 className="text-3xl font-semibold text-secondary">Control integral de boxes</h1>
             <p className="text-sm text-muted-foreground">
-              Optimiza la ocupacion y gestiona solicitudes en tiempo real para toda la red RedSalud.
+              Optimiza la ocupacion y gestiona solicitudes en tiempo real para toda la red RedSalud, alineada con el panel del doctor.
             </p>
           </div>
         </section>
 
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-secondary">Bloqueos pendientes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold text-amber-600">{pendientes}</p>
+              <p className="text-xs text-secondary/70">Solicitudes en espera de revisión</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-secondary">Bloqueos aprobados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold text-emerald-700">{aprobadas}</p>
+              <p className="text-xs text-secondary/70">Liberan horas hacia médicos de la especialidad</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-secondary">Bloqueos rechazados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold text-rose-700">{rechazadas}</p>
+              <p className="text-xs text-secondary/70">Con feedback para el médico</p>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid gap-5">
           <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
-            <h2 className="text-lg font-semibold text-secondary mb-3">Reasignacion rapida de boxes</h2>
-            <BoxesBoard />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-secondary">Radar de disponibilidad</h2>
+                <p className="text-sm text-secondary/70">Todo se gestiona via solicitudes. Visualiza bloqueados, libres y liberados para el día.</p>
+              </div>
+              <Input type="date" value={fechaCursor} onChange={(e) => setFechaCursor(e.target.value)} className="w-[180px]" />
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-secondary">Boxes libres</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-semibold text-emerald-700">
+                    {boxes.data && bloqueosDelDia.data ? boxes.data.filter((b) => !(bloqueosDelDia.data ?? []).some((bk) => bk.boxId === b.id && bk.estado !== "rechazado")).length : "..."}
+                  </p>
+                  <p className="text-xs text-secondary/70">Disponible para asignar via solicitud</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-secondary">Boxes bloqueados</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-semibold text-amber-700">{(bloqueosDelDia.data ?? []).length}</p>
+                  <p className="text-xs text-secondary/70">Solicitudes en el día</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-secondary">Horas liberadas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-semibold text-primary">{(extrasDelDia.data ?? []).length}</p>
+                  <p className="text-xs text-secondary/70">Horas extra/recuperativas disponibles</p>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-secondary">Detalle de bloqueos</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {(bloqueosDelDia.data ?? []).map((b) => (
+                    <div key={b.id} className="rounded-xl border border-border/60 bg-white px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-secondary">{b.inicio} - {b.fin}</span>
+                        <Badge className={b.estado === "aprobado" ? "bg-emerald-100 text-emerald-800" : b.estado === "rechazado" ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-800"}>
+                          {b.estado}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-secondary/70">
+                        Box {b.boxId ?? "N/A"} · {b.motivo} · {b.doctorNombre || b.rut}
+                      </div>
+                    </div>
+                  ))}
+                  {(bloqueosDelDia.data ?? []).length === 0 && <p className="text-sm text-muted-foreground">Sin bloqueos en la fecha.</p>}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-secondary">Liberadas (horas extra)</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {(extrasDelDia.data ?? []).map((e) => (
+                    <div key={e.id} className="rounded-xl border border-border/60 bg-white px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-secondary">{e.inicio} - {e.fin}</span>
+                        <span className="text-[11px] text-secondary/70">{e.especialidad || "Especialidad"}</span>
+                      </div>
+                      <div className="text-xs text-secondary/70">Box {e.boxId ?? "N/A"} · {e.audience === "especialidad" ? "Compartida por especialidad" : "Propia"}</div>
+                    </div>
+                  ))}
+                  {(extrasDelDia.data ?? []).length === 0 && <p className="text-sm text-muted-foreground">Sin horas liberadas para esta fecha.</p>}
+                </CardContent>
+              </Card>
+            </div>
           </section>
 
           <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
@@ -223,6 +485,15 @@ export default function Page() {
           <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
             <h2 className="text-lg font-semibold text-secondary mb-3">Tickets</h2>
             <Tickets />
+          </section>
+
+          <section className="rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
+            <h2 className="text-lg font-semibold text-secondary mb-3">Alineacion con medicos</h2>
+            <p className="text-sm text-secondary/70 mb-3">Historial y observaciones sincronizadas con el panel del doctor.</p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <ObservacionRapida />
+              <SolicitudesBloqueo />
+            </div>
           </section>
         </div>
       </div>

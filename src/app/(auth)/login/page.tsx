@@ -10,10 +10,10 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { validateRut, formatRut, cleanRut } from "@/lib/rut"
 import { setCookie } from "@/lib/cookies"
-import { detectRoleByRut, getUserByRut, roleHomePath } from "@/lib/mock-roles"
+import { roleHomePath } from "@/lib/mock-roles"
 
 const schema = z.object({
-  rut: z.string().min(7, "RUT requerido").refine(validateRut, "RUT invalido"),
+  rut: z.string().min(7, "RUT requerido"),
   password: z.string().min(4, "Minimo 4 caracteres"),
 })
 
@@ -31,37 +31,21 @@ export default function LoginPage() {
   // formato de RUT en caliente; la deteccion de rol ocurre al enviar
 
   const onSubmit = async (data: FormData) => {
-    const rutClean = cleanRut(data.rut)
-    // 1) Intentar como doctor en BD
-    try {
-      const res = await fetch(`/api/doctor/profile?rut=${encodeURIComponent(rutClean)}`)
-      if (res.ok) {
-        const generic = process.env.NEXT_PUBLIC_DOCTOR_PASSWORD || "doctor123"
-        if (data.password !== generic) {
-          toast.error("Contrasena incorrecta para perfil doctor")
-          return
-        }
-        setCookie("role", "doctor")
-        setCookie("rut", rutClean)
-        toast.success("Sesion iniciada como doctor")
-        router.push(roleHomePath("doctor"))
-        return
-      }
-    } catch {}
-    // 2) Fallback a perfiles mock (agendamiento/jefatura/admin)
-    const role = detectRoleByRut(data.rut)
-    const user = getUserByRut(data.rut)
-    if (!role || !user) {
-      toast.error("RUT no reconocido")
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rut: data.rut, password: data.password }),
+    })
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}))
+      toast.error(payload?.message || "No pudimos iniciar sesion")
       return
     }
-    if (user.password && data.password !== user.password) {
-      toast.error("Contrasena incorrecta")
-      return
-    }
+    const payload = await res.json()
+    const role = payload.role
+    setCookie("rut", cleanRut(data.rut))
     setCookie("role", role)
-    setCookie("rut", rutClean)
-    toast.success(`Sesion iniciada como ${role}`)
+    toast.success("Sesion iniciada")
     router.push(roleHomePath(role))
   }
 

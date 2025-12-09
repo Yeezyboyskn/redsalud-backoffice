@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import DoctorProfileCard from "@/components/doctor-v2/DoctorProfileCard"
 import ExtraHoursPanel from "@/components/doctor-v2/ExtraHoursPanel"
 import BlockRequestsPanel from "@/components/doctor-v2/BlockRequestsPanel"
+import PendingRequests from "@/components/doctor-v2/PendingRequests"
 
 function getCookie(name: string) {
   if (typeof document === "undefined") return ""
@@ -33,10 +34,10 @@ export default function DoctorV2Page() {
     <AppShell>
       <div className="space-y-6">
         <DoctorProfileCard />
+        <PendingRequests />
         <ExtraHoursPanel />
         <BlockRequestsPanel />
       </div>
     </AppShell>
   )
 }
-

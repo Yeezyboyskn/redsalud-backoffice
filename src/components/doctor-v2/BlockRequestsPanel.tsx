@@ -1,7 +1,7 @@
-"use client"
+﻿"use client"
 import { useMemo, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CalendarDays, Check, Clock3, Repeat2, TriangleAlert, X } from "lucide-react"
+import { CalendarDays, Check, Repeat2, TriangleAlert, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils"
 type Block = { id: string; fecha: string; inicio: string; fin: string; motivo: string; boxId?: number; estado: "pendiente" | "aprobado" | "rechazado" }
 type ListResponse = { items: Block[] }
 type Profile = { boxes: { id: number; etiqueta: string }[] }
+type WeeklySlot = { dia_semana: number | string; inicio: string; fin: string; box?: number | string | null; boxId?: number | string | null; piso?: number | null; frecuencia_min?: number | null }
+type WeeklyResponse = { items: WeeklySlot[] }
+type BaseSlot = { fecha: string; inicio: string; fin: string; boxId: number | null; piso: number | null; minutos: number }
 
 const weekDays = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
 const fmtMesAnio = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" })
@@ -46,20 +49,55 @@ const timeOptions = () => {
   }
   return out
 }
+const minutesBetween = (inicio: string, fin: string) => {
+  const [hi, mi] = inicio.split(":").map(Number)
+  const [hf, mf] = fin.split(":").map(Number)
+  return hf * 60 + mf - (hi * 60 + mi)
+}
+const formatMinutes = (min: number) => {
+  if (min <= 0) return "0 min"
+  const hours = Math.floor(min / 60)
+  const rest = min % 60
+  if (hours && rest) return `${hours}h ${rest}m`
+  if (hours) return `${hours}h`
+  return `${rest}m`
+}
+const normalizeDiaSemana = (value: number | string | null | undefined): number | null => {
+  if (typeof value === "number") {
+    if (value === 0) return 7
+    return value
+  }
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase()
+    if (normalized.startsWith("lun")) return 1
+    if (normalized.startsWith("mar")) return 2
+    if (normalized.startsWith("mie") || normalized.startsWith("mi\u00e9")) return 3
+    if (normalized.startsWith("jue")) return 4
+    if (normalized.startsWith("vie")) return 5
+    if (normalized.startsWith("sab") || normalized.startsWith("s\u00e1b")) return 6
+    if (normalized.startsWith("dom")) return 7
+  }
+  return null
+}
+const normalizeBoxId = (value: any): number | null => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
 const motivoOptions = [
-  { value: "urgencia", label: "🚑 Urgencia" },
-  { value: "congreso", label: "🎓 Congreso" },
-  { value: "vacaciones", label: "🏖️ Vacaciones" },
-  { value: "licencia", label: "🤒 Licencia" },
-  { value: "admin", label: "🗂️ Administrativo" },
+  { value: "urgencia", label: "Urgencia" },
+  { value: "congreso", label: "Congreso" },
+  { value: "vacaciones", label: "Vacaciones" },
+  { value: "licencia", label: "Licencia" },
+  { value: "admin", label: "Administrativo" },
 ]
 
 const iconByMotivo: Record<string, string> = {
-  urgencia: "🚑",
-  congreso: "🎓",
-  vacaciones: "✈️",
-  licencia: "🤒",
-  admin: "🚫",
+  urgencia: "U",
+  congreso: "C",
+  vacaciones: "V",
+  licencia: "L",
+  admin: "A",
 }
 
 const pseudoConflict = (start?: string, end?: string) => {
@@ -87,9 +125,11 @@ export default function BlockRequestsPanel() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [confirmPayloads, setConfirmPayloads] = useState<{ fecha: string; inicio: string; fin: string; motivo: string; boxId?: number }[] | null>(null)
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<BaseSlot | null>(null)
 
   const yearScope = monthCursor.getFullYear()
   const profile = useQuery<Profile>({ queryKey: ["doctor-profile"], queryFn: () => fetch("/api/doctor/profile").then((r) => r.json()) })
+  const weekly = useQuery<WeeklyResponse>({ queryKey: ["weekly-slots"], queryFn: () => fetch("/api/doctor/weekly-slots").then((r) => r.json()) })
   const list = useQuery<ListResponse>({
     queryKey: ["block-requests", yearScope],
     queryFn: async () => fetch(`/api/doctor/block-requests?from=${yearScope}-01-01&to=${yearScope}-12-31`).then((r) => r.json()),
@@ -112,7 +152,7 @@ export default function BlockRequestsPanel() {
     return (list.data?.items ?? []).length > 0 ? list.data?.items ?? [] : demoBlocks
   }, [list.data, demoBlocks])
 
-  const counters = useMemo(() => {
+  const blockCounters = useMemo(() => {
     const m = new Map<string, number>()
     for (const i of itemsBase) {
       m.set(i.fecha, (m.get(i.fecha) ?? 0) + 1)
@@ -120,7 +160,7 @@ export default function BlockRequestsPanel() {
     return m
   }, [itemsBase])
 
-  const blocksByDate = useMemo(() => {
+  const blockRequestsByDate = useMemo(() => {
     const m = new Map<string, Block[]>()
     for (const b of itemsBase) {
       const arr = m.get(b.fecha) ?? []
@@ -129,6 +169,42 @@ export default function BlockRequestsPanel() {
     }
     return m
   }, [itemsBase])
+
+  const baseSlotsByDate = useMemo(() => {
+    const map = new Map<string, BaseSlot[]>()
+    const slots = weekly.data?.items ?? []
+    if (slots.length === 0) return map
+    const start = startOfCalendarMonth(monthCursor)
+    const totalDays = 42
+    for (let offset = 0; offset < totalDays; offset++) {
+      const day = new Date(start)
+      day.setDate(start.getDate() + offset)
+      const dow = day.getDay() === 0 ? 7 : day.getDay()
+      const iso = toISODate(day)
+      for (const slot of slots) {
+        const slotDow = normalizeDiaSemana(slot.dia_semana)
+        if (!slotDow || slotDow !== dow) continue
+        if (!slot.inicio || !slot.fin) continue
+        const boxParsed = normalizeBoxId(slot.box ?? slot.boxId)
+        const piso = typeof slot.piso === "number" ? slot.piso : null
+        const arr = map.get(iso) ?? []
+        arr.push({ fecha: iso, inicio: slot.inicio, fin: slot.fin, boxId: boxParsed, piso, minutos: minutesBetween(slot.inicio, slot.fin) })
+        map.set(iso, arr)
+      }
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => a.inicio.localeCompare(b.inicio))
+    }
+    return map
+  }, [weekly.data, monthCursor])
+
+  const agendaCounters = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const [iso, slots] of baseSlotsByDate) {
+      m.set(iso, slots.length)
+    }
+    return m
+  }, [baseSlotsByDate])
 
   const monthLabel = fmtMesAnio.format(monthCursor)
 
@@ -142,13 +218,16 @@ export default function BlockRequestsPanel() {
     if (!rangeStart || (rangeStart && rangeEnd)) {
       setRangeStart(iso)
       setRangeEnd(null)
+      setSelectedSlot(null)
       return
     }
     if (iso < rangeStart) {
       setRangeStart(iso)
       setRangeEnd(rangeStart)
+      setSelectedSlot(null)
     } else {
       setRangeEnd(iso)
+      setSelectedSlot(null)
     }
   }
 
@@ -198,7 +277,7 @@ export default function BlockRequestsPanel() {
     : "Sin fechas seleccionadas"
 
   const summaryHours = () => {
-    if (allDay) return "Todo el dia"
+    if (allDay) return "Todo el dÃ­a"
     return `${horaInicio} a ${horaFin}`
   }
 
@@ -230,14 +309,46 @@ export default function BlockRequestsPanel() {
 
   const conflictCount = pseudoConflict(rangeStart, rangeEnd ?? rangeStart)
 
+  const selectedAgendaDate = rangeStart ?? selectionDays[0] ?? null
+  const agendaDelDia = useMemo(() => {
+    if (!selectedAgendaDate) return []
+    return baseSlotsByDate.get(selectedAgendaDate) ?? []
+  }, [baseSlotsByDate, selectedAgendaDate])
+
+  const boxesLibres = useMemo(() => {
+    const asignados = profile.data?.boxes ?? []
+    const ocupados = new Set((agendaDelDia ?? []).map((s) => s.boxId).filter((b): b is number => Boolean(b)))
+    return asignados.filter((b) => !ocupados.has(b.id))
+  }, [agendaDelDia, profile.data])
+
+  const estadoDelDia = useMemo(() => {
+    if (!selectedAgendaDate) return null
+    const blocks = blockRequestsByDate.get(selectedAgendaDate) ?? []
+    if (blocks.length === 0) return null
+    const estados = new Set(blocks.map((b) => b.estado))
+    if (estados.size === 1) return Array.from(estados)[0]
+    if (estados.has("pendiente")) return "pendiente"
+    return "mixto"
+  }, [blockRequestsByDate, selectedAgendaDate])
+
+  const selectSlot = (slot: BaseSlot) => {
+    setSelectedSlot(slot)
+    setRangeStart(slot.fecha)
+    setRangeEnd(slot.fecha)
+    setAllDay(false)
+    setHoraInicio(slot.inicio)
+    setHoraFin(slot.fin)
+    setBoxId(slot.boxId ?? "")
+  }
+
   return (
     <section className="space-y-6 rounded-2xl border border-border/60 bg-white/95 p-6 shadow-lg shadow-primary/10 backdrop-blur-sm">
       <header className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/70">Flujo rapido</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-secondary/70">Flujo rápido</p>
           <h2 className="text-2xl font-semibold text-secondary">Bloqueos operativos</h2>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Selecciona rango de fechas, define horas o marca todo el dia, y confirma en un solo paso. Ideal para urgencias, congresos o vacaciones.
+            Selecciona rango de fechas, define horas o marca todo el dÃ­a, y confirma en un solo paso. Ideal para urgencias, congresos o vacaciones.
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-secondary">
@@ -263,7 +374,7 @@ export default function BlockRequestsPanel() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-lg">Calendario inteligente</CardTitle>
-                <CardDescription>Selecciona rango, visualiza bloqueos existentes con iconos tenues.</CardDescription>
+                <CardDescription>Selecciona rango, visualiza bloqueos existentes y tu agenda base.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setMonthCursor(new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1))}>
@@ -291,9 +402,10 @@ export default function BlockRequestsPanel() {
                   const isStart = rangeStart === iso
                   const isEnd = rangeEnd === iso
                   const inRange = isSelected
-                  const count = counters.get(iso) ?? 0
-                  const blocks = blocksByDate.get(iso) ?? []
-                  const marker = blocks[0] ? iconByMotivo[blocks[0].motivo] ?? "•" : null
+                  const blockCount = blockCounters.get(iso) ?? 0
+                  const agendaCount = agendaCounters.get(iso) ?? 0
+                  const blocks = blockRequestsByDate.get(iso) ?? []
+                  const marker = blocks[0] ? iconByMotivo[blocks[0].motivo] ?? "B" : null
 
                   return (
                     <button
@@ -301,7 +413,7 @@ export default function BlockRequestsPanel() {
                       type="button"
                       onClick={() => toggleDay(iso)}
                       className={cn(
-                        "flex min-h-[72px] flex-col justify-between rounded-xl border px-2 py-2 text-left text-[11px] leading-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+                        "flex min-h-[88px] flex-col justify-between rounded-xl border px-2 py-2 text-left text-[11px] leading-tight transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
                         isSelected ? "border-primary bg-primary/10 shadow" : "border-border/60 bg-white/90",
                         inRange && "ring-1 ring-primary/30",
                         !isCurrent && "opacity-60"
@@ -312,13 +424,22 @@ export default function BlockRequestsPanel() {
                         {marker && <span className="text-sm">{marker}</span>}
                       </div>
                       <div className="space-y-1">
-                        {count > 0 ? (
-                          <div className="rounded-lg bg-secondary/5 px-2 py-1 text-[10px] font-semibold text-secondary/70">
-                            {count} bloqueo{count === 1 ? "" : "s"}
-                          </div>
-                        ) : (
-                          <div className="rounded-lg bg-muted/50 px-2 py-1 text-[10px] font-semibold text-secondary/50">Libre</div>
-                        )}
+                        <div
+                          className={cn(
+                            "rounded-lg border px-2 py-1 text-[10px] font-semibold",
+                            agendaCount > 0 ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-border/50 bg-secondary/5 text-secondary/60"
+                          )}
+                        >
+                          {agendaCount > 0 ? `${agendaCount} tramo${agendaCount === 1 ? "" : "s"} agenda` : "Sin agenda"}
+                        </div>
+                        <div
+                          className={cn(
+                            "rounded-lg border px-2 py-1 text-[10px] font-semibold",
+                            blockCount > 0 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-border/50 bg-muted/50 text-secondary/60"
+                          )}
+                        >
+                          {blockCount > 0 ? `${blockCount} bloqueo${blockCount === 1 ? "" : "s"}` : "Sin bloqueos"}
+                        </div>
                       </div>
                     </button>
                   )
@@ -331,7 +452,11 @@ export default function BlockRequestsPanel() {
                 <span>Rango seleccionado</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm">✈️</span>
+                <span className="h-3 w-3 rounded-full bg-emerald-500" />
+                <span>Agenda base del doctor</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">V</span>
                 <span>Vacaciones/licencia marcada</span>
               </div>
             </div>
@@ -345,12 +470,42 @@ export default function BlockRequestsPanel() {
               <CardDescription className="text-sm text-secondary/80">{selectedRangeLabel}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-secondary/5 px-3 py-2">
-                  <div>
-                    <p className="text-sm font-semibold text-secondary">Todo el dia</p>
-                    <p className="text-xs text-secondary/70">Ideal para vacaciones o licencias.</p>
-                  </div>
+              {selectedSlot && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-secondary">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Tramo seleccionado</p>
+                  <p className="font-semibold">
+                    {fmtDia.format(new Date(`${selectedSlot.fecha}T00:00:00`))} Â· {selectedSlot.inicio} - {selectedSlot.fin}
+                  </p>
+                  <p className="text-xs text-secondary/70">
+                    {selectedSlot.boxId ? `Box ${selectedSlot.boxId}` : "Box sin asignar"}{selectedSlot.piso !== null && selectedSlot.piso !== undefined ? ` - Piso ${selectedSlot.piso}` : ""}
+                  </p>
+                </div>
+              )}
+                <div className="grid gap-4">
+                  {estadoDelDia && (
+                    <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-secondary/5 px-3 py-2 text-sm">
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary/70">Estado solicitudes de este dÃ­a</span>
+                      <span
+                        className={cn(
+                          "rounded-full px-3 py-1 text-[11px] font-semibold",
+                          estadoDelDia === "aprobado"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : estadoDelDia === "rechazado"
+                              ? "bg-rose-100 text-rose-800"
+                              : estadoDelDia === "pendiente"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-secondary/10 text-secondary/80",
+                        )}
+                      >
+                        {estadoDelDia}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-secondary/5 px-3 py-2">
+                    <div>
+                    <p className="text-sm font-semibold text-secondary">Todo el dÃ­a</p>
+                      <p className="text-xs text-secondary/70">Ideal para vacaciones o licencias.</p>
+                    </div>
                   <label className="flex items-center gap-2 text-sm font-semibold text-secondary">
                     <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
                     Activar
@@ -403,7 +558,7 @@ export default function BlockRequestsPanel() {
                     <Repeat2 className="size-4 text-secondary/80" />
                     <div>
                       <p className="text-sm font-semibold text-secondary">Repetir bloqueo</p>
-                      <p className="text-xs text-secondary/70">Repite mismo dia de la semana por varias semanas.</p>
+                      <p className="text-xs text-secondary/70">Repite mismo dÃ­a de la semana por varias semanas.</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -435,7 +590,7 @@ export default function BlockRequestsPanel() {
               <div className="rounded-2xl border border-border/60 bg-secondary/5 px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary/70">Resumen</p>
                 <p className="text-sm text-secondary">
-                  Vas a bloquear {selectionDays.length} dia{selectionDays.length === 1 ? "" : "s"} ({summaryHours()}) por {motivoOptions.find((m) => m.value === motivo)?.label ?? motivo}.
+                  Vas a bloquear {selectionDays.length} dÃ­a{selectionDays.length === 1 ? "" : "s"} ({summaryHours()}) por {motivoOptions.find((m) => m.value === motivo)?.label ?? motivo}.
                 </p>
               </div>
 
@@ -457,6 +612,62 @@ export default function BlockRequestsPanel() {
               >
                 {addMut.isPending ? "Creando..." : "Confirmar bloqueo"}
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Sabanilla del dÃ­a</CardTitle>
+              <CardDescription className="text-sm text-secondary/80">Tramos base segun tu horario semanal.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="text-xs text-secondary/70">{selectedRangeLabel}</div>
+              {agendaDelDia.length > 0 ? (
+                <div className="space-y-2">
+                  {agendaDelDia.map((slot, idx) => {
+                    const active = selectedSlot?.fecha === slot.fecha && selectedSlot?.inicio === slot.inicio && selectedSlot?.fin === slot.fin && selectedSlot?.boxId === slot.boxId
+                    return (
+                      <button
+                        key={`${slot.fecha}-${slot.inicio}-${idx}`}
+                        type="button"
+                        onClick={() => selectSlot(slot)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200",
+                          active ? "border-emerald-400 bg-emerald-50 shadow-inner" : "border-border/60 bg-white hover:border-emerald-300 hover:bg-emerald-50/60"
+                        )}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-secondary">{slot.inicio} - {slot.fin}</span>
+                          <span className="text-xs text-secondary/70">
+                            {slot.boxId ? `Box ${slot.boxId}` : "Box sin asignar"}
+                            {slot.piso !== null && slot.piso !== undefined ? ` - Piso ${slot.piso}` : ""}
+                          </span>
+                        </div>
+                        <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold", active ? "bg-emerald-500 text-white" : "bg-secondary/5 text-secondary")}>
+                          {formatMinutes(slot.minutos)}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/60 px-3 py-3 text-xs text-muted-foreground">
+                  No hay tramos programados para el dia seleccionado.
+                </div>
+              )}
+
+              <div className="rounded-xl border border-border/60 bg-secondary/5 px-3 py-3 text-sm text-secondary">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-secondary/70">Boxes libres</p>
+                {boxesLibres.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {boxesLibres.map((b) => (
+                      <span key={b.id} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-secondary shadow">{b.etiqueta}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-xs text-secondary/70">Sin boxes libres segun la agenda del dia.</p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -500,14 +711,14 @@ export default function BlockRequestsPanel() {
             <div className="mt-4 space-y-2 rounded-xl border border-border/60 bg-secondary/5 px-4 py-3 text-sm text-secondary">
               <div className="flex items-center justify-between">
                 <span>Horario</span>
-                <span className="font-semibold">{allDay ? "Todo el dia" : `${horaInicio} - ${horaFin}`}</span>
+                <span className="font-semibold">{allDay ? "Todo el dÃ­a" : `${horaInicio} - ${horaFin}`}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Motivo</span>
                 <span className="font-semibold">{motivoOptions.find((m) => m.value === motivo)?.label ?? motivo}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Dias a bloquear</span>
+                <span>DÃ­as a bloquear</span>
                 <span className="font-semibold">{confirmPayloads.length}</span>
               </div>
               {repeat && (
@@ -529,7 +740,7 @@ export default function BlockRequestsPanel() {
                 <TriangleAlert className="mt-0.5 size-4" />
                 <div>
                   <p className="font-semibold">Tienes {conflictCount} pacientes agendados en este rango.</p>
-                  <p className="text-xs text-amber-800">¿Deseas bloquear y solicitar reprogramacion?</p>
+                  <p className="text-xs text-amber-800">Deseas bloquear y solicitar reprogramacion?</p>
                 </div>
               </div>
             )}
@@ -552,3 +763,6 @@ export default function BlockRequestsPanel() {
     </section>
   )
 }
+
+
+
